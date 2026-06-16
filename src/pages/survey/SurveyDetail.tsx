@@ -19,6 +19,7 @@ const AUTH_TOKEN_KEY = "survey_auth_token";
 
 type SurveyDetailProps = {
   accountDescription?: string;
+  accountAvatarSrc?: string;
   accountName?: string;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
@@ -202,6 +203,7 @@ const getStatusLabel = (status: string) => STATUS_LABELS[status] ?? status;
 
 export const SurveyDetail = ({
   accountDescription,
+  accountAvatarSrc,
   accountName,
   isAuthenticated,
   onAuthAction,
@@ -217,6 +219,7 @@ export const SurveyDetail = ({
   const [survey, setSurvey] = useState<SurveyDetailView>(fallbackDetail);
   const [isLoading, setIsLoading] = useState(() => Boolean(surveyId));
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
     if (!surveyId) {
@@ -376,7 +379,7 @@ export const SurveyDetail = ({
   return (
     <main className="survey-detail-page">
       <Topbar
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         isSidebarOpen={isSidebarOpen}
         onProfileClick={handleProfileClick}
         onToggleSidebar={toggleSidebar}
@@ -388,7 +391,7 @@ export const SurveyDetail = ({
         accountDescription={accountDescription}
         accountName={accountName}
         activeItem="Daftar Survey"
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         id="survey-detail-sidebar"
         isAuthenticated={isAuthenticated}
         isOpen={isSidebarOpen}

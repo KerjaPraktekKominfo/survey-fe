@@ -14,6 +14,7 @@ const COMPLETION_STORAGE_PREFIX = "survey_completion_";
 
 type SurveyCompleteProps = {
   accountDescription?: string;
+  accountAvatarSrc?: string;
   accountName?: string;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
@@ -90,6 +91,7 @@ const formatSubmittedAt = (value?: string) => {
 
 export const SurveyComplete = ({
   accountDescription,
+  accountAvatarSrc,
   accountName,
   isAuthenticated,
   onAuthAction,
@@ -104,6 +106,7 @@ export const SurveyComplete = ({
   const [summary, setSummary] = useState<CompletionSummary>(() =>
     readCompletionSummary(surveyId),
   );
+  const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
     if (!surveyId || summary.title) {
@@ -175,7 +178,7 @@ export const SurveyComplete = ({
   return (
     <main className="survey-complete-page">
       <Topbar
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         isSidebarOpen={isSidebarOpen}
         onProfileClick={() => {
           closeSidebar();
@@ -190,7 +193,7 @@ export const SurveyComplete = ({
         accountDescription={accountDescription}
         accountName={accountName}
         activeItem="Daftar Survey"
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         id="survey-complete-sidebar"
         isAuthenticated={isAuthenticated}
         isOpen={isSidebarOpen}

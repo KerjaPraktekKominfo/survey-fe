@@ -1,5 +1,6 @@
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
+import adminAvatar from "./assets/home/home-admin-avatar.png";
 import { ForgotPassword } from "./pages/auth/ForgotPassword";
 import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
@@ -14,6 +15,10 @@ import { SurveyDetail } from "./pages/survey/SurveyDetail";
 import { SurveyFill } from "./pages/survey/SurveyFill";
 import { SurveyList } from "./pages/survey/SurveyList";
 import { API_BASE_URL } from "./lib/api";
+import {
+  resolveProfilePhotoUrl,
+  type ProfilePhotoSource,
+} from "./lib/profilePhoto";
 
 type AuthPage =
   | "change-password"
@@ -35,7 +40,7 @@ const AUTH_SESSION_KEY = "survey_auth_session";
 const AUTH_TOKEN_KEY = "survey_auth_token";
 const SURVEY_COMPLETION_SESSION_PREFIX = "survey_completion_";
 
-type AccountProfile = {
+type AccountProfile = ProfilePhotoSource & {
   full_name?: string | null;
   position?: string | null;
   username?: string | null;
@@ -559,6 +564,10 @@ function App() {
 
   const accountName = accountProfile?.full_name?.trim() || "Pengguna";
   const accountDescription = accountProfile?.username?.trim() || "Belum login";
+  const accountAvatarSrc = useMemo(
+    () => resolveProfilePhotoUrl(accountProfile, adminAvatar),
+    [accountProfile],
+  );
 
   const renderLogoutDialog = () => {
     if (!isLogoutConfirmOpen) {
@@ -608,6 +617,7 @@ function App() {
     return withLogoutDialog(
       <Home
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
@@ -623,6 +633,7 @@ function App() {
     return withLogoutDialog(
       <SurveyList
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
@@ -640,6 +651,7 @@ function App() {
     return withLogoutDialog(
       <SurveyDetail
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
@@ -658,6 +670,7 @@ function App() {
     return withLogoutDialog(
       <SurveyFill
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
@@ -677,6 +690,7 @@ function App() {
       <SurveyComplete
         key={surveyCompleteId ?? "survey-complete"}
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
@@ -694,6 +708,7 @@ function App() {
     return withLogoutDialog(
       <Profile
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
@@ -711,6 +726,7 @@ function App() {
     return withLogoutDialog(
       <ManageSurveys
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
@@ -728,6 +744,7 @@ function App() {
     return withLogoutDialog(
       <CreateSurvey
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
@@ -744,6 +761,7 @@ function App() {
     return withLogoutDialog(
       <CreateSurvey
         accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         editSurveyId={editSurveyId}
         isAuthenticated={isAuthenticated}

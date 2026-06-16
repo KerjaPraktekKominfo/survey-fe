@@ -14,6 +14,7 @@ const PER_PAGE_OPTIONS = [5, 10, 25, 50] as const;
 
 type ManageSurveysProps = {
   accountDescription?: string;
+  accountAvatarSrc?: string;
   accountName?: string;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
@@ -328,6 +329,7 @@ const SkeletonRows = () => (
 
 export const ManageSurveys = ({
   accountDescription,
+  accountAvatarSrc,
   accountName,
   isAuthenticated,
   onAuthAction,
@@ -355,6 +357,7 @@ export const ManageSurveys = ({
   );
   const [isPerPageOpen, setIsPerPageOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -564,7 +567,7 @@ export const ManageSurveys = ({
   return (
     <main className="manage-survey-page">
       <Topbar
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         isSidebarOpen={isSidebarOpen}
         onProfileClick={handleProfileClick}
         onToggleSidebar={toggleSidebar}
@@ -576,7 +579,7 @@ export const ManageSurveys = ({
         accountDescription={accountDescription}
         accountName={accountName}
         activeItem="Kelola Survey"
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         id="manage-survey-sidebar"
         isAuthenticated={isAuthenticated}
         isOpen={isSidebarOpen}

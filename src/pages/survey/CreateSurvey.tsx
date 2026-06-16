@@ -26,6 +26,7 @@ const MAX_QUESTION_DEPTH = 3;
 
 type CreateSurveyProps = {
   accountDescription?: string;
+  accountAvatarSrc?: string;
   accountName?: string;
   editSurveyId?: number | null;
   isAuthenticated: boolean;
@@ -688,6 +689,7 @@ const normalizeSurveyDetail = (detail: SurveyDetail) => {
 
 export const CreateSurvey = ({
   accountDescription,
+  accountAvatarSrc,
   accountName,
   editSurveyId = null,
   isAuthenticated,
@@ -712,6 +714,7 @@ export const CreateSurvey = ({
       ? `/surveys/edit/${editSurveyId}`
       : "/surveys/create";
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const avatarSrc = accountAvatarSrc ?? adminAvatar;
   const [step, setStep] = useState<BuilderStep>(() => getStepFromUrl());
   const [surveyId, setSurveyId] = useState<number | null>(
     mode === "edit" ? editSurveyId : (storedDraft.surveyId ?? null),
@@ -2425,7 +2428,7 @@ export const CreateSurvey = ({
   return (
     <main className="create-survey-page">
       <Topbar
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         isSidebarOpen={isSidebarOpen}
         onProfileClick={handleProfileClick}
         onToggleSidebar={toggleSidebar}
@@ -2437,7 +2440,7 @@ export const CreateSurvey = ({
         accountDescription={accountDescription}
         accountName={accountName}
         activeItem="Kelola Survey"
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         id="create-survey-sidebar"
         isAuthenticated={isAuthenticated}
         isOpen={isSidebarOpen}

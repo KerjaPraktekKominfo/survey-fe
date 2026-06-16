@@ -15,6 +15,7 @@ const AUTH_TOKEN_KEY = "survey_auth_token";
 
 type SurveyFillProps = {
   accountDescription?: string;
+  accountAvatarSrc?: string;
   accountName?: string;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
@@ -347,6 +348,7 @@ const buildAnswerPayload = (
 
 export const SurveyFill = ({
   accountDescription,
+  accountAvatarSrc,
   accountName,
   isAuthenticated,
   onAuthAction,
@@ -372,6 +374,7 @@ export const SurveyFill = ({
   const [pages, setPages] = useState<SurveyPage[]>([]);
   const [surveyTitle, setSurveyTitle] = useState(DEFAULT_TITLE);
   const dropdownButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   const draftKey = getAnswerDraftKey(surveyId);
 
@@ -1012,7 +1015,7 @@ export const SurveyFill = ({
   return (
     <main className="survey-fill-page">
       <Topbar
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         isSidebarOpen={isSidebarOpen}
         onProfileClick={() => {
           closeSidebar();
@@ -1027,7 +1030,7 @@ export const SurveyFill = ({
         accountDescription={accountDescription}
         accountName={accountName}
         activeItem="Daftar Survey"
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         id="survey-fill-sidebar"
         isAuthenticated={isAuthenticated}
         isOpen={isSidebarOpen}

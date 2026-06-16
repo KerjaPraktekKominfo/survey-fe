@@ -18,6 +18,7 @@ const PER_PAGE_OPTIONS = [3, 6, 9, 12] as const;
 
 type SurveyListProps = {
   accountDescription?: string;
+  accountAvatarSrc?: string;
   accountName?: string;
   accountPosition?: string | null;
   isAuthenticated: boolean;
@@ -306,6 +307,7 @@ const SurveyListSkeleton = () => (
 
 export const SurveyList = ({
   accountDescription,
+  accountAvatarSrc,
   accountName,
   accountPosition,
   isAuthenticated,
@@ -328,6 +330,7 @@ export const SurveyList = ({
   const [hasLoadError, setHasLoadError] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [isLimitOpen, setIsLimitOpen] = useState(false);
+  const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -495,7 +498,7 @@ export const SurveyList = ({
   return (
     <main className="survey-list-page">
       <Topbar
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         isSidebarOpen={isSidebarOpen}
         onProfileClick={handleProfileClick}
         onToggleSidebar={toggleSidebar}
@@ -507,7 +510,7 @@ export const SurveyList = ({
         accountDescription={accountDescription}
         accountName={accountName}
         activeItem="Daftar Survey"
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         id="survey-list-sidebar"
         isAuthenticated={isAuthenticated}
         isOpen={isSidebarOpen}

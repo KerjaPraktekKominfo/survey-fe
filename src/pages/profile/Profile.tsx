@@ -17,6 +17,10 @@ import editIcon from "../../assets/profile/profile-edit.svg";
 import lockIcon from "../../assets/profile/profile-lock.svg";
 import profileAvatar from "../../assets/profile/profile-avatar.jpg";
 import { API_BASE_URL } from "../../lib/api";
+import {
+  resolveProfilePhotoUrl,
+  type ProfilePhotoSource,
+} from "../../lib/profilePhoto";
 import "../../styles/profile/Profile.scss";
 
 const AUTH_TOKEN_KEY = "survey_auth_token";
@@ -24,6 +28,7 @@ const CONTACT_CODE_COOLDOWN_MS = 60_000;
 
 type ProfileProps = {
   accountDescription?: string;
+  accountAvatarSrc?: string;
   accountName?: string;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
@@ -35,15 +40,13 @@ type ProfileProps = {
   onUnauthorized?: () => void;
 };
 
-type AccountProfile = {
+type AccountProfile = ProfilePhotoSource & {
   full_name?: string | null;
   username?: string | null;
 };
 
-type ProfileData = {
+type ProfileData = ProfilePhotoSource & {
   address: string | null;
-  avatar_path?: string | null;
-  avatar_url?: string | null;
   email: string | null;
   email_verified?: boolean;
   email_verified_at?: string | null;
@@ -54,11 +57,7 @@ type ProfileData = {
   phone: string | null;
   phone_verified?: boolean;
   phone_verified_at?: string | null;
-  photo_path?: string | null;
-  photo_url?: string | null;
   position: "asn" | "non_asn" | "public" | string;
-  profile_photo_path?: string | null;
-  profile_photo_url?: string | null;
   role: string;
   role_id: number;
   username: string;
@@ -205,38 +204,6 @@ const getApiMessage = async (response: Response) => {
 const displayValue = (value: string | null | undefined) => {
   const trimmedValue = typeof value === "string" ? value.trim() : "";
   return trimmedValue || "-";
-};
-
-const appendCacheVersion = (url: string, version: number) => {
-  if (version <= 0 || url.startsWith("blob:") || url.startsWith("data:")) {
-    return url;
-  }
-
-  return `${url}${url.includes("?") ? "&" : "?"}v=${version}`;
-};
-
-const resolveProfilePhotoUrl = (
-  profile: ProfileData | null,
-  version: number,
-) => {
-  const photoPath =
-    profile?.profile_photo_url ??
-    profile?.profile_photo_path ??
-    profile?.photo_url ??
-    profile?.photo_path ??
-    profile?.avatar_url ??
-    profile?.avatar_path;
-
-  if (!photoPath) {
-    return profileAvatar;
-  }
-
-  if (/^(https?:)?\/\//i.test(photoPath) || photoPath.startsWith("data:")) {
-    return appendCacheVersion(photoPath, version);
-  }
-
-  const publicUrl = `${API_BASE_URL}${photoPath.startsWith("/") ? "" : "/"}${photoPath}`;
-  return appendCacheVersion(publicUrl, version);
 };
 
 const loadImage = (src: string) =>
@@ -639,6 +606,7 @@ const ProfilePhotoCropModal = ({
 
 export const Profile = ({
   accountDescription,
+  accountAvatarSrc,
   accountName,
   isAuthenticated,
   onAuthAction,
@@ -1234,8 +1202,13 @@ export const Profile = ({
   const positionLabel = formatPosition(profile?.position ?? "");
   const roleLabel = formatRole(profile?.role ?? "user");
   const profileAvatarSrc = useMemo(
-    () => resolveProfilePhotoUrl(profile, profilePhotoVersion),
-    [profile, profilePhotoVersion],
+    () =>
+      resolveProfilePhotoUrl(
+        profile,
+        accountAvatarSrc ?? profileAvatar,
+        profilePhotoVersion,
+      ),
+    [accountAvatarSrc, profile, profilePhotoVersion],
   );
   const sidebarName = profile?.full_name?.trim() || accountName || "Pengguna";
   const sidebarDescription =

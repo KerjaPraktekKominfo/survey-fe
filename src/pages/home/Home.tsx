@@ -17,6 +17,7 @@ const AUTH_TOKEN_KEY = "survey_auth_token";
 
 type HomeProps = {
   accountDescription?: string;
+  accountAvatarSrc?: string;
   accountName?: string;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
@@ -227,6 +228,7 @@ const getStoredToken = () =>
 
 export const Home = ({
   accountDescription,
+  accountAvatarSrc,
   accountName,
   isAuthenticated,
   onAuthAction,
@@ -238,6 +240,7 @@ export const Home = ({
   const [surveys, setSurveys] = useState<SurveyCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -319,7 +322,7 @@ export const Home = ({
   return (
     <main className="home-page">
       <Topbar
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         isSidebarOpen={isSidebarOpen}
         onProfileClick={handleProfileClick}
         onToggleSidebar={toggleSidebar}
@@ -331,7 +334,7 @@ export const Home = ({
         accountDescription={accountDescription}
         accountName={accountName}
         activeItem="Dashboard"
-        avatarSrc={adminAvatar}
+        avatarSrc={avatarSrc}
         id="home-sidebar"
         isAuthenticated={isAuthenticated}
         isOpen={isSidebarOpen}
