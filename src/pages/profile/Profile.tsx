@@ -1,6 +1,8 @@
 import {
   type CSSProperties,
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -117,13 +119,11 @@ type ProfilePhotoCropModalProps = {
   onKeepEditing: () => void;
   onRequestClose: () => void;
   onSubmit: () => void;
-  onUpdateCrop: (
-    field: "offsetX" | "offsetY" | "zoom",
-    value: number,
-  ) => void;
+  onUpdateCrop: (updates: Partial<ProfilePhotoCropTransform>) => void;
 };
 
 type ProfilePhotoCropState = {
+  cropSize: number;
   file: File | null;
   fileName: string;
   isOpen: boolean;
@@ -134,6 +134,25 @@ type ProfilePhotoCropState = {
   offsetY: number;
   zoom: number;
 };
+
+type ProfilePhotoCropTransform = Pick<
+  ProfilePhotoCropState,
+  "cropSize" | "offsetX" | "offsetY" | "zoom"
+>;
+
+type ProfilePhotoCropInteraction =
+  | {
+      pointerId: number;
+      startOffsetX: number;
+      startOffsetY: number;
+      startX: number;
+      startY: number;
+      type: "move";
+    }
+  | {
+      pointerId: number;
+      type: "resize";
+    };
 
 const POSITION_LABELS: Record<string, string> = {
   asn: "Pegawai ASN",
@@ -159,6 +178,7 @@ const initialContactVerification: ContactVerificationState = {
 };
 
 const initialProfilePhotoCrop: ProfilePhotoCropState = {
+  cropSize: 240,
   file: null,
   fileName: "",
   isOpen: false,
@@ -171,7 +191,13 @@ const initialProfilePhotoCrop: ProfilePhotoCropState = {
 };
 
 const PROFILE_PHOTO_SIZE = 512;
+const PROFILE_PHOTO_EDITOR_SIZE = 320;
+const PROFILE_PHOTO_INITIAL_CROP_SIZE = 240;
+const PROFILE_PHOTO_MAX_ZOOM = 3;
 const PROFILE_PHOTO_MAX_SIZE = 3 * 1024 * 1024;
+const PROFILE_PHOTO_MIN_CROP_SIZE = 128;
+const PROFILE_PHOTO_MIN_ZOOM = 1;
+const PROFILE_PHOTO_ZOOM_STEP = 0.1;
 const PROFILE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const getStoredToken = () =>
@@ -206,6 +232,28 @@ const displayValue = (value: string | null | undefined) => {
   return trimmedValue || "-";
 };
 
+const clampNumber = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
+const clampProfilePhotoCropSize = (value: number) =>
+  clampNumber(value, PROFILE_PHOTO_MIN_CROP_SIZE, PROFILE_PHOTO_EDITOR_SIZE);
+
+const clampProfilePhotoZoom = (value: number) =>
+  clampNumber(value, PROFILE_PHOTO_MIN_ZOOM, PROFILE_PHOTO_MAX_ZOOM);
+
+const clampProfilePhotoOffset = (
+  value: number,
+  cropSize: number,
+  zoom: number,
+) => {
+  const maxOffset = Math.max(
+    0,
+    (PROFILE_PHOTO_EDITOR_SIZE * zoom - cropSize) / 2,
+  );
+
+  return clampNumber(value, -maxOffset, maxOffset);
+};
+
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -217,7 +265,7 @@ const loadImage = (src: string) =>
 
 const createCroppedProfilePhoto = async (
   imageUrl: string,
-  crop: Pick<ProfilePhotoCropState, "offsetX" | "offsetY" | "zoom">,
+  crop: ProfilePhotoCropTransform,
 ) => {
   const image = await loadImage(imageUrl);
   const canvas = document.createElement("canvas");
@@ -231,22 +279,29 @@ const createCroppedProfilePhoto = async (
   canvas.height = PROFILE_PHOTO_SIZE;
 
   const baseScale = Math.max(
-    PROFILE_PHOTO_SIZE / image.naturalWidth,
-    PROFILE_PHOTO_SIZE / image.naturalHeight,
+    PROFILE_PHOTO_EDITOR_SIZE / image.naturalWidth,
+    PROFILE_PHOTO_EDITOR_SIZE / image.naturalHeight,
   );
   const scale = baseScale * crop.zoom;
   const drawWidth = image.naturalWidth * scale;
   const drawHeight = image.naturalHeight * scale;
   const drawX =
-    (PROFILE_PHOTO_SIZE - drawWidth) / 2 +
-    (crop.offsetX / 100) * PROFILE_PHOTO_SIZE;
+    (PROFILE_PHOTO_EDITOR_SIZE - drawWidth) / 2 + crop.offsetX;
   const drawY =
-    (PROFILE_PHOTO_SIZE - drawHeight) / 2 +
-    (crop.offsetY / 100) * PROFILE_PHOTO_SIZE;
+    (PROFILE_PHOTO_EDITOR_SIZE - drawHeight) / 2 + crop.offsetY;
+  const cropX = (PROFILE_PHOTO_EDITOR_SIZE - crop.cropSize) / 2;
+  const cropY = (PROFILE_PHOTO_EDITOR_SIZE - crop.cropSize) / 2;
+  const outputScale = PROFILE_PHOTO_SIZE / crop.cropSize;
 
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, PROFILE_PHOTO_SIZE, PROFILE_PHOTO_SIZE);
-  context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+  context.drawImage(
+    image,
+    (drawX - cropX) * outputScale,
+    (drawY - cropY) * outputScale,
+    drawWidth * outputScale,
+    drawHeight * outputScale,
+  );
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -469,15 +524,156 @@ const ProfilePhotoCropModal = ({
   onSubmit,
   onUpdateCrop,
 }: ProfilePhotoCropModalProps) => {
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const interactionRef = useRef<ProfilePhotoCropInteraction | null>(null);
+
   if (!crop.isOpen) {
     return null;
   }
 
-  const previewStyle = {
-    "--profile-photo-offset-x": `${crop.offsetX}%`,
-    "--profile-photo-offset-y": `${crop.offsetY}%`,
+  const cropHandles = [
+    ["north-west", "Ubah area crop dari kiri atas"],
+    ["north", "Ubah area crop dari atas"],
+    ["north-east", "Ubah area crop dari kanan atas"],
+    ["east", "Ubah area crop dari kanan"],
+    ["south-east", "Ubah area crop dari kanan bawah"],
+    ["south", "Ubah area crop dari bawah"],
+    ["south-west", "Ubah area crop dari kiri bawah"],
+    ["west", "Ubah area crop dari kiri"],
+  ] as const;
+
+  const stageStyle = {
+    "--profile-photo-crop-offset": `${crop.cropSize / 2}px`,
+    "--profile-photo-crop-size": `${crop.cropSize}px`,
+    "--profile-photo-offset-x": `${crop.offsetX}px`,
+    "--profile-photo-offset-y": `${crop.offsetY}px`,
     "--profile-photo-zoom": crop.zoom,
   } as CSSProperties;
+
+  const getEditorPoint = (event: ReactPointerEvent<HTMLElement>) => {
+    const stage = stageRef.current;
+
+    if (!stage) {
+      return null;
+    }
+
+    const rect = stage.getBoundingClientRect();
+
+    if (rect.width === 0) {
+      return null;
+    }
+
+    const scale = PROFILE_PHOTO_EDITOR_SIZE / rect.width;
+
+    return {
+      x: (event.clientX - rect.left) * scale,
+      y: (event.clientY - rect.top) * scale,
+    };
+  };
+
+  const beginMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (crop.isUploading || event.button !== 0) {
+      return;
+    }
+
+    const point = getEditorPoint(event);
+
+    if (!point) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    interactionRef.current = {
+      pointerId: event.pointerId,
+      startOffsetX: crop.offsetX,
+      startOffsetY: crop.offsetY,
+      startX: point.x,
+      startY: point.y,
+      type: "move",
+    };
+  };
+
+  const beginResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (crop.isUploading || event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    stageRef.current?.setPointerCapture(event.pointerId);
+    interactionRef.current = {
+      pointerId: event.pointerId,
+      type: "resize",
+    };
+  };
+
+  const updateInteraction = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const interaction = interactionRef.current;
+
+    if (!interaction || interaction.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const point = getEditorPoint(event);
+
+    if (!point) {
+      return;
+    }
+
+    if (interaction.type === "move") {
+      onUpdateCrop({
+        offsetX: interaction.startOffsetX + point.x - interaction.startX,
+        offsetY: interaction.startOffsetY + point.y - interaction.startY,
+      });
+      return;
+    }
+
+    const center = PROFILE_PHOTO_EDITOR_SIZE / 2;
+    const nextCropSize = Math.max(
+      Math.abs(point.x - center),
+      Math.abs(point.y - center),
+    ) * 2;
+
+    onUpdateCrop({
+      cropSize: clampProfilePhotoCropSize(nextCropSize),
+    });
+  };
+
+  const endInteraction = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const interaction = interactionRef.current;
+
+    if (!interaction || interaction.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    interactionRef.current = null;
+  };
+
+  const updateZoom = (nextZoom: number) => {
+    onUpdateCrop({
+      zoom: clampProfilePhotoZoom(nextZoom),
+    });
+  };
+
+  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    updateZoom(
+      crop.zoom + (event.deltaY < 0 ? PROFILE_PHOTO_ZOOM_STEP : -PROFILE_PHOTO_ZOOM_STEP),
+    );
+  };
+
+  const resetCrop = () => {
+    onUpdateCrop({
+      cropSize: PROFILE_PHOTO_INITIAL_CROP_SIZE,
+      offsetX: 0,
+      offsetY: 0,
+      zoom: 1,
+    });
+  };
 
   return (
     <div className="profile-modal profile-photo-modal" role="presentation">
@@ -501,50 +697,54 @@ const ProfilePhotoCropModal = ({
           </p>
         </header>
 
-        <figure className="profile-photo-modal__preview" style={previewStyle}>
-          <img src={crop.objectUrl} alt="Preview foto profil" />
-        </figure>
+        <div
+          aria-label="Area crop foto profil"
+          className="profile-photo-modal__stage"
+          onPointerCancel={endInteraction}
+          onPointerDown={beginMove}
+          onPointerMove={updateInteraction}
+          onPointerUp={endInteraction}
+          onWheel={handleWheel}
+          ref={stageRef}
+          role="application"
+          style={stageStyle}
+        >
+          <img draggable={false} src={crop.objectUrl} alt="Preview foto profil" />
+          <div className="profile-photo-modal__crop-box" aria-hidden="true" />
+          {cropHandles.map(([position, label]) => (
+            <button
+              aria-label={label}
+              className={`profile-photo-modal__handle profile-photo-modal__handle--${position}`}
+              disabled={crop.isUploading}
+              key={position}
+              onPointerDown={beginResize}
+              type="button"
+            />
+          ))}
+        </div>
 
-        <div className="profile-photo-modal__controls">
-          <label>
-            <span>Zoom</span>
-            <input
-              max="2.5"
-              min="1"
-              onChange={(event) =>
-                onUpdateCrop("zoom", Number(event.target.value))
-              }
-              step="0.05"
-              type="range"
-              value={crop.zoom}
-            />
-          </label>
-          <label>
-            <span>Geser Horizontal</span>
-            <input
-              max="40"
-              min="-40"
-              onChange={(event) =>
-                onUpdateCrop("offsetX", Number(event.target.value))
-              }
-              step="1"
-              type="range"
-              value={crop.offsetX}
-            />
-          </label>
-          <label>
-            <span>Geser Vertikal</span>
-            <input
-              max="40"
-              min="-40"
-              onChange={(event) =>
-                onUpdateCrop("offsetY", Number(event.target.value))
-              }
-              step="1"
-              type="range"
-              value={crop.offsetY}
-            />
-          </label>
+        <div className="profile-photo-modal__toolbar" aria-label="Kontrol crop">
+          <button
+            disabled={crop.isUploading || crop.zoom <= PROFILE_PHOTO_MIN_ZOOM}
+            onClick={() => updateZoom(crop.zoom - PROFILE_PHOTO_ZOOM_STEP)}
+            type="button"
+          >
+            -
+          </button>
+          <button
+            disabled={crop.isUploading}
+            onClick={resetCrop}
+            type="button"
+          >
+            Reset
+          </button>
+          <button
+            disabled={crop.isUploading || crop.zoom >= PROFILE_PHOTO_MAX_ZOOM}
+            onClick={() => updateZoom(crop.zoom + PROFILE_PHOTO_ZOOM_STEP)}
+            type="button"
+          >
+            +
+          </button>
         </div>
 
         {crop.message && (
@@ -852,6 +1052,7 @@ export const Profile = ({
 
     const objectUrl = URL.createObjectURL(file);
     setProfilePhotoCrop({
+      cropSize: PROFILE_PHOTO_INITIAL_CROP_SIZE,
       file,
       fileName: file.name,
       isOpen: true,
@@ -867,13 +1068,25 @@ export const Profile = ({
   };
 
   const updateProfilePhotoCrop = (
-    field: "offsetX" | "offsetY" | "zoom",
-    value: number,
+    updates: Partial<ProfilePhotoCropTransform>,
   ) => {
     setProfilePhotoCrop((current) => ({
       ...current,
-      [field]: value,
+      cropSize: clampProfilePhotoCropSize(
+        updates.cropSize ?? current.cropSize,
+      ),
       message: "",
+      offsetX: clampProfilePhotoOffset(
+        updates.offsetX ?? current.offsetX,
+        clampProfilePhotoCropSize(updates.cropSize ?? current.cropSize),
+        clampProfilePhotoZoom(updates.zoom ?? current.zoom),
+      ),
+      offsetY: clampProfilePhotoOffset(
+        updates.offsetY ?? current.offsetY,
+        clampProfilePhotoCropSize(updates.cropSize ?? current.cropSize),
+        clampProfilePhotoZoom(updates.zoom ?? current.zoom),
+      ),
+      zoom: clampProfilePhotoZoom(updates.zoom ?? current.zoom),
     }));
   };
 
