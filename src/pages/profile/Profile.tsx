@@ -1,8 +1,10 @@
 import {
+  type CSSProperties,
   type FormEvent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Sidebar } from "../../components/sidebar";
@@ -40,6 +42,8 @@ type AccountProfile = {
 
 type ProfileData = {
   address: string | null;
+  avatar_path?: string | null;
+  avatar_url?: string | null;
   email: string | null;
   email_verified?: boolean;
   email_verified_at?: string | null;
@@ -50,7 +54,11 @@ type ProfileData = {
   phone: string | null;
   phone_verified?: boolean;
   phone_verified_at?: string | null;
+  photo_path?: string | null;
+  photo_url?: string | null;
   position: "asn" | "non_asn" | "public" | string;
+  profile_photo_path?: string | null;
+  profile_photo_url?: string | null;
   role: string;
   role_id: number;
   username: string;
@@ -103,6 +111,31 @@ type ContactVerificationModalProps = {
   onVerify: () => void;
 };
 
+type ProfilePhotoCropModalProps = {
+  crop: ProfilePhotoCropState;
+  isCloseConfirmOpen: boolean;
+  onConfirmClose: () => void;
+  onKeepEditing: () => void;
+  onRequestClose: () => void;
+  onSubmit: () => void;
+  onUpdateCrop: (
+    field: "offsetX" | "offsetY" | "zoom",
+    value: number,
+  ) => void;
+};
+
+type ProfilePhotoCropState = {
+  file: File | null;
+  fileName: string;
+  isOpen: boolean;
+  isUploading: boolean;
+  message: string;
+  objectUrl: string;
+  offsetX: number;
+  offsetY: number;
+  zoom: number;
+};
+
 const POSITION_LABELS: Record<string, string> = {
   asn: "Pegawai ASN",
   non_asn: "Pegawai Non-ASN",
@@ -125,6 +158,22 @@ const initialContactVerification: ContactVerificationState = {
   message: "",
   type: "info",
 };
+
+const initialProfilePhotoCrop: ProfilePhotoCropState = {
+  file: null,
+  fileName: "",
+  isOpen: false,
+  isUploading: false,
+  message: "",
+  objectUrl: "",
+  offsetX: 0,
+  offsetY: 0,
+  zoom: 1,
+};
+
+const PROFILE_PHOTO_SIZE = 512;
+const PROFILE_PHOTO_MAX_SIZE = 3 * 1024 * 1024;
+const PROFILE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const getStoredToken = () =>
   localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
@@ -156,6 +205,96 @@ const getApiMessage = async (response: Response) => {
 const displayValue = (value: string | null | undefined) => {
   const trimmedValue = typeof value === "string" ? value.trim() : "";
   return trimmedValue || "-";
+};
+
+const appendCacheVersion = (url: string, version: number) => {
+  if (version <= 0 || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+
+  return `${url}${url.includes("?") ? "&" : "?"}v=${version}`;
+};
+
+const resolveProfilePhotoUrl = (
+  profile: ProfileData | null,
+  version: number,
+) => {
+  const photoPath =
+    profile?.profile_photo_url ??
+    profile?.profile_photo_path ??
+    profile?.photo_url ??
+    profile?.photo_path ??
+    profile?.avatar_url ??
+    profile?.avatar_path;
+
+  if (!photoPath) {
+    return profileAvatar;
+  }
+
+  if (/^(https?:)?\/\//i.test(photoPath) || photoPath.startsWith("data:")) {
+    return appendCacheVersion(photoPath, version);
+  }
+
+  const publicUrl = `${API_BASE_URL}${photoPath.startsWith("/") ? "" : "/"}${photoPath}`;
+  return appendCacheVersion(publicUrl, version);
+};
+
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Foto profil gagal dibaca."));
+    image.src = src;
+  });
+
+const createCroppedProfilePhoto = async (
+  imageUrl: string,
+  crop: Pick<ProfilePhotoCropState, "offsetX" | "offsetY" | "zoom">,
+) => {
+  const image = await loadImage(imageUrl);
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Browser tidak mendukung crop foto.");
+  }
+
+  canvas.width = PROFILE_PHOTO_SIZE;
+  canvas.height = PROFILE_PHOTO_SIZE;
+
+  const baseScale = Math.max(
+    PROFILE_PHOTO_SIZE / image.naturalWidth,
+    PROFILE_PHOTO_SIZE / image.naturalHeight,
+  );
+  const scale = baseScale * crop.zoom;
+  const drawWidth = image.naturalWidth * scale;
+  const drawHeight = image.naturalHeight * scale;
+  const drawX =
+    (PROFILE_PHOTO_SIZE - drawWidth) / 2 +
+    (crop.offsetX / 100) * PROFILE_PHOTO_SIZE;
+  const drawY =
+    (PROFILE_PHOTO_SIZE - drawHeight) / 2 +
+    (crop.offsetY / 100) * PROFILE_PHOTO_SIZE;
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, PROFILE_PHOTO_SIZE, PROFILE_PHOTO_SIZE);
+  context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Foto profil gagal diproses."));
+          return;
+        }
+
+        resolve(blob);
+      },
+      "image/jpeg",
+      0.9,
+    );
+  });
 };
 
 const formatRole = (role: string) => {
@@ -354,6 +493,150 @@ const ContactVerificationModal = ({
   );
 };
 
+const ProfilePhotoCropModal = ({
+  crop,
+  isCloseConfirmOpen,
+  onConfirmClose,
+  onKeepEditing,
+  onRequestClose,
+  onSubmit,
+  onUpdateCrop,
+}: ProfilePhotoCropModalProps) => {
+  if (!crop.isOpen) {
+    return null;
+  }
+
+  const previewStyle = {
+    "--profile-photo-offset-x": `${crop.offsetX}%`,
+    "--profile-photo-offset-y": `${crop.offsetY}%`,
+    "--profile-photo-zoom": crop.zoom,
+  } as CSSProperties;
+
+  return (
+    <div className="profile-modal profile-photo-modal" role="presentation">
+      <button
+        aria-label="Tutup popup crop foto profil"
+        className="profile-modal__backdrop"
+        onClick={onRequestClose}
+        type="button"
+      />
+      <section
+        aria-labelledby="profile-photo-crop-title"
+        aria-modal="true"
+        className="profile-modal__panel profile-photo-modal__panel"
+        role="dialog"
+      >
+        <header>
+          <h2 id="profile-photo-crop-title">Atur Foto Profil</h2>
+          <p>
+            Sesuaikan posisi foto agar pas dengan frame profil. Foto akan
+            dipotong menjadi bentuk kotak seperti tampilan profil.
+          </p>
+        </header>
+
+        <figure className="profile-photo-modal__preview" style={previewStyle}>
+          <img src={crop.objectUrl} alt="Preview foto profil" />
+        </figure>
+
+        <div className="profile-photo-modal__controls">
+          <label>
+            <span>Zoom</span>
+            <input
+              max="2.5"
+              min="1"
+              onChange={(event) =>
+                onUpdateCrop("zoom", Number(event.target.value))
+              }
+              step="0.05"
+              type="range"
+              value={crop.zoom}
+            />
+          </label>
+          <label>
+            <span>Geser Horizontal</span>
+            <input
+              max="40"
+              min="-40"
+              onChange={(event) =>
+                onUpdateCrop("offsetX", Number(event.target.value))
+              }
+              step="1"
+              type="range"
+              value={crop.offsetX}
+            />
+          </label>
+          <label>
+            <span>Geser Vertikal</span>
+            <input
+              max="40"
+              min="-40"
+              onChange={(event) =>
+                onUpdateCrop("offsetY", Number(event.target.value))
+              }
+              step="1"
+              type="range"
+              value={crop.offsetY}
+            />
+          </label>
+        </div>
+
+        {crop.message && (
+          <p className="profile-modal__message profile-modal__message--error">
+            {crop.message}
+          </p>
+        )}
+
+        <div className="profile-modal__actions">
+          <button
+            disabled={crop.isUploading}
+            onClick={onRequestClose}
+            type="button"
+          >
+            Batalkan
+          </button>
+          <button
+            className="profile-modal__primary"
+            disabled={crop.isUploading}
+            onClick={onSubmit}
+            type="button"
+          >
+            {crop.isUploading ? "Mengupload..." : "Selesai"}
+          </button>
+        </div>
+      </section>
+
+      {isCloseConfirmOpen && (
+        <section
+          aria-labelledby="profile-photo-close-title"
+          aria-modal="true"
+          className="profile-modal__panel profile-photo-confirm"
+          role="alertdialog"
+        >
+          <header>
+            <h2 id="profile-photo-close-title">Batalkan upload foto?</h2>
+            <p>
+              Foto yang dipilih belum disimpan. Lanjutkan mengedit atau batalkan
+              upload foto profil ini.
+            </p>
+          </header>
+          <div className="profile-modal__actions">
+            <button onClick={onKeepEditing} type="button">
+              Lanjut edit
+            </button>
+            <button
+              className="profile-modal__primary"
+              onClick={onConfirmClose}
+              type="button"
+            >
+              Batalkan upload
+            </button>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
 export const Profile = ({
   accountDescription,
   accountName,
@@ -366,6 +649,7 @@ export const Profile = ({
   onProfileLoaded,
   onUnauthorized,
 }: ProfileProps) => {
+  const photoFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -389,6 +673,11 @@ export const Profile = ({
   const [now, setNow] = useState(() => Date.now());
   const [contactVerification, setContactVerification] =
     useState<ContactVerificationState>(initialContactVerification);
+  const [profilePhotoVersion, setProfilePhotoVersion] = useState(0);
+  const [profilePhotoCrop, setProfilePhotoCrop] =
+    useState<ProfilePhotoCropState>(initialProfilePhotoCrop);
+  const [isPhotoCloseConfirmOpen, setIsPhotoCloseConfirmOpen] =
+    useState(false);
 
   const applyProfile = useCallback(
     (nextProfile: ProfileData) => {
@@ -421,6 +710,10 @@ export const Profile = ({
       });
 
       if (response.status === 401) {
+        setProfilePhotoCrop((current) => ({
+          ...current,
+          isUploading: false,
+        }));
         onUnauthorized?.();
         return;
       }
@@ -468,6 +761,15 @@ export const Profile = ({
 
     return () => window.clearInterval(timerId);
   }, [contactVerification.cooldownUntil, contactVerification.isOpen, now]);
+
+  useEffect(
+    () => () => {
+      if (profilePhotoCrop.objectUrl) {
+        URL.revokeObjectURL(profilePhotoCrop.objectUrl);
+      }
+    },
+    [profilePhotoCrop.objectUrl],
+  );
 
   const profileFields = useMemo<ProfileField[]>(
     () => [
@@ -552,6 +854,136 @@ export const Profile = ({
   const handleAuthAction = () => {
     closeSidebar();
     onAuthAction?.();
+  };
+
+  const openPhotoPicker = () => {
+    setFeedback(null);
+    photoFileInputRef.current?.click();
+  };
+
+  const handlePhotoFileChange = (file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    if (!PROFILE_PHOTO_TYPES.has(file.type)) {
+      setFeedback({
+        message: "Format foto profil harus JPG, PNG, atau WEBP.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (file.size > PROFILE_PHOTO_MAX_SIZE) {
+      setFeedback({
+        message: "Ukuran foto profil maksimal 3MB.",
+        type: "error",
+      });
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setProfilePhotoCrop({
+      file,
+      fileName: file.name,
+      isOpen: true,
+      isUploading: false,
+      message: "",
+      objectUrl,
+      offsetX: 0,
+      offsetY: 0,
+      zoom: 1,
+    });
+    setIsPhotoCloseConfirmOpen(false);
+    setFeedback(null);
+  };
+
+  const updateProfilePhotoCrop = (
+    field: "offsetX" | "offsetY" | "zoom",
+    value: number,
+  ) => {
+    setProfilePhotoCrop((current) => ({
+      ...current,
+      [field]: value,
+      message: "",
+    }));
+  };
+
+  const requestCloseProfilePhotoCrop = () => {
+    if (profilePhotoCrop.isUploading) {
+      return;
+    }
+
+    setIsPhotoCloseConfirmOpen(true);
+  };
+
+  const closeProfilePhotoCrop = () => {
+    setIsPhotoCloseConfirmOpen(false);
+    setProfilePhotoCrop(initialProfilePhotoCrop);
+  };
+
+  const uploadProfilePhoto = async () => {
+    if (!profilePhotoCrop.file || !profilePhotoCrop.objectUrl) {
+      return;
+    }
+
+    setProfilePhotoCrop((current) => ({
+      ...current,
+      isUploading: true,
+      message: "",
+    }));
+    setFeedback(null);
+
+    try {
+      const croppedPhoto = await createCroppedProfilePhoto(
+        profilePhotoCrop.objectUrl,
+        profilePhotoCrop,
+      );
+      const formData = new FormData();
+      const safeName = profilePhotoCrop.fileName.replace(/[^\w.-]+/g, "-");
+
+      formData.append("photo", croppedPhoto, safeName || "profile-photo.jpg");
+
+      const response = await fetch(`${API_BASE_URL}/users/profile/photo`, {
+        body: formData,
+        credentials: "include",
+        headers: authHeaders(),
+        method: "POST",
+      });
+
+      if (response.status === 401) {
+        onUnauthorized?.();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(await getApiMessage(response));
+      }
+
+      const result = (await response.json()) as ApiResult<Partial<ProfileData>>;
+
+      if (result.data && profile) {
+        applyProfile({ ...profile, ...result.data });
+      } else if (result.data?.id) {
+        applyProfile(result.data as ProfileData);
+      }
+
+      setProfilePhotoVersion((current) => current + 1);
+      closeProfilePhotoCrop();
+      setFeedback({
+        message: result.message ?? "Foto profil berhasil diperbarui.",
+        type: "success",
+      });
+    } catch (error) {
+      setProfilePhotoCrop((current) => ({
+        ...current,
+        isUploading: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Foto profil gagal diupload. Silakan coba lagi.",
+      }));
+    }
   };
 
   const handleStartEdit = (field: EditableProfileField) => {
@@ -801,6 +1233,10 @@ export const Profile = ({
   const identityName = displayValue(profile?.full_name);
   const positionLabel = formatPosition(profile?.position ?? "");
   const roleLabel = formatRole(profile?.role ?? "user");
+  const profileAvatarSrc = useMemo(
+    () => resolveProfilePhotoUrl(profile, profilePhotoVersion),
+    [profile, profilePhotoVersion],
+  );
   const sidebarName = profile?.full_name?.trim() || accountName || "Pengguna";
   const sidebarDescription =
     profile?.username?.trim() || accountDescription || "Belum login";
@@ -813,7 +1249,7 @@ export const Profile = ({
   return (
     <main className="profile-page">
       <Topbar
-        avatarSrc={profileAvatar}
+        avatarSrc={profileAvatarSrc}
         isSidebarOpen={isSidebarOpen}
         onProfileClick={closeSidebar}
         onToggleSidebar={toggleSidebar}
@@ -823,7 +1259,7 @@ export const Profile = ({
       <Sidebar
         accountDescription={sidebarDescription}
         accountName={sidebarName}
-        avatarSrc={profileAvatar}
+        avatarSrc={profileAvatarSrc}
         id="profile-sidebar"
         isAuthenticated={isAuthenticated}
         isOpen={isSidebarOpen}
@@ -864,13 +1300,24 @@ export const Profile = ({
                 <div className="profile-overview__avatar-wrap">
                   <img
                     className="profile-overview__avatar"
-                    src={profileAvatar}
+                    src={profileAvatarSrc}
                     alt=""
                     aria-hidden="true"
+                  />
+                  <input
+                    accept="image/jpeg,image/png,image/webp"
+                    className="profile-photo-input"
+                    onChange={(event) => {
+                      handlePhotoFileChange(event.target.files?.[0] ?? null);
+                      event.currentTarget.value = "";
+                    }}
+                    ref={photoFileInputRef}
+                    type="file"
                   />
                   <button
                     aria-label="Ubah foto profil"
                     className="profile-overview__camera"
+                    onClick={openPhotoPicker}
                     type="button"
                   >
                     <img src={cameraIcon} alt="" aria-hidden="true" />
@@ -1039,6 +1486,16 @@ export const Profile = ({
           </footer>
         </div>
       </section>
+
+      <ProfilePhotoCropModal
+        crop={profilePhotoCrop}
+        isCloseConfirmOpen={isPhotoCloseConfirmOpen}
+        onConfirmClose={closeProfilePhotoCrop}
+        onKeepEditing={() => setIsPhotoCloseConfirmOpen(false)}
+        onRequestClose={requestCloseProfilePhotoCrop}
+        onSubmit={() => void uploadProfilePhoto()}
+        onUpdateCrop={updateProfilePhotoCrop}
+      />
 
       <ContactVerificationModal
         code={contactVerification.code}
