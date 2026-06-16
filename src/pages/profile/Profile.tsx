@@ -115,6 +115,7 @@ type ContactVerificationModalProps = {
 type ProfilePhotoCropModalProps = {
   crop: ProfilePhotoCropState;
   isCloseConfirmOpen: boolean;
+  onChangeImage: () => void;
   onConfirmClose: () => void;
   onKeepEditing: () => void;
   onRequestClose: () => void;
@@ -129,6 +130,8 @@ type ProfilePhotoCropState = {
   isOpen: boolean;
   isUploading: boolean;
   message: string;
+  naturalHeight: number;
+  naturalWidth: number;
   objectUrl: string;
   offsetX: number;
   offsetY: number;
@@ -184,6 +187,8 @@ const initialProfilePhotoCrop: ProfilePhotoCropState = {
   isOpen: false,
   isUploading: false,
   message: "",
+  naturalHeight: 0,
+  naturalWidth: 0,
   objectUrl: "",
   offsetX: 0,
   offsetY: 0,
@@ -235,21 +240,64 @@ const displayValue = (value: string | null | undefined) => {
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-const clampProfilePhotoCropSize = (value: number) =>
-  clampNumber(value, PROFILE_PHOTO_MIN_CROP_SIZE, PROFILE_PHOTO_EDITOR_SIZE);
+const clampProfilePhotoCropSize = (
+  value: number,
+  maxSize = PROFILE_PHOTO_EDITOR_SIZE,
+) => {
+  const resolvedMaxSize = clampNumber(maxSize, 1, PROFILE_PHOTO_EDITOR_SIZE);
+  const resolvedMinSize = Math.min(
+    PROFILE_PHOTO_MIN_CROP_SIZE,
+    resolvedMaxSize,
+  );
+
+  return clampNumber(value, resolvedMinSize, resolvedMaxSize);
+};
 
 const clampProfilePhotoZoom = (value: number) =>
   clampNumber(value, PROFILE_PHOTO_MIN_ZOOM, PROFILE_PHOTO_MAX_ZOOM);
 
-const clampProfilePhotoOffset = (
-  value: number,
-  cropSize: number,
+const getProfilePhotoImageLayout = (
+  naturalWidth: number,
+  naturalHeight: number,
   zoom: number,
 ) => {
-  const maxOffset = Math.max(
-    0,
-    (PROFILE_PHOTO_EDITOR_SIZE * zoom - cropSize) / 2,
+  if (naturalWidth <= 0 || naturalHeight <= 0) {
+    return {
+      height: PROFILE_PHOTO_EDITOR_SIZE * zoom,
+      width: PROFILE_PHOTO_EDITOR_SIZE * zoom,
+    };
+  }
+
+  const baseScale = Math.min(
+    PROFILE_PHOTO_EDITOR_SIZE / naturalWidth,
+    PROFILE_PHOTO_EDITOR_SIZE / naturalHeight,
   );
+
+  return {
+    height: naturalHeight * baseScale * zoom,
+    width: naturalWidth * baseScale * zoom,
+  };
+};
+
+const getInitialProfilePhotoCropSize = (
+  naturalWidth: number,
+  naturalHeight: number,
+) => {
+  const layout = getProfilePhotoImageLayout(naturalWidth, naturalHeight, 1);
+
+  return clampNumber(
+    Math.min(PROFILE_PHOTO_INITIAL_CROP_SIZE, layout.width, layout.height),
+    PROFILE_PHOTO_MIN_CROP_SIZE,
+    PROFILE_PHOTO_EDITOR_SIZE,
+  );
+};
+
+const clampProfilePhotoOffset = (
+  value: number,
+  imageSize: number,
+  cropSize: number,
+) => {
+  const maxOffset = Math.max(0, (imageSize - cropSize) / 2);
 
   return clampNumber(value, -maxOffset, maxOffset);
 };
@@ -278,7 +326,7 @@ const createCroppedProfilePhoto = async (
   canvas.width = PROFILE_PHOTO_SIZE;
   canvas.height = PROFILE_PHOTO_SIZE;
 
-  const baseScale = Math.max(
+  const baseScale = Math.min(
     PROFILE_PHOTO_EDITOR_SIZE / image.naturalWidth,
     PROFILE_PHOTO_EDITOR_SIZE / image.naturalHeight,
   );
@@ -518,14 +566,42 @@ const ContactVerificationModal = ({
 const ProfilePhotoCropModal = ({
   crop,
   isCloseConfirmOpen,
+  onChangeImage,
   onConfirmClose,
   onKeepEditing,
   onRequestClose,
   onSubmit,
   onUpdateCrop,
 }: ProfilePhotoCropModalProps) => {
+  const modalRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const interactionRef = useRef<ProfilePhotoCropInteraction | null>(null);
+
+  useEffect(() => {
+    if (!crop.isOpen) {
+      return;
+    }
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const preventModalWheel = (event: WheelEvent) => {
+      const target = event.target;
+
+      if (target instanceof Node && modalRef.current?.contains(target)) {
+        event.preventDefault();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("wheel", preventModalWheel, {
+      capture: true,
+      passive: false,
+    });
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      window.removeEventListener("wheel", preventModalWheel, { capture: true });
+    };
+  }, [crop.isOpen]);
 
   if (!crop.isOpen) {
     return null;
@@ -542,9 +618,16 @@ const ProfilePhotoCropModal = ({
     ["west", "Ubah area crop dari kiri"],
   ] as const;
 
+  const imageLayout = getProfilePhotoImageLayout(
+    crop.naturalWidth,
+    crop.naturalHeight,
+    crop.zoom,
+  );
   const stageStyle = {
     "--profile-photo-crop-offset": `${crop.cropSize / 2}px`,
     "--profile-photo-crop-size": `${crop.cropSize}px`,
+    "--profile-photo-image-height": `${imageLayout.height}px`,
+    "--profile-photo-image-width": `${imageLayout.width}px`,
     "--profile-photo-offset-x": `${crop.offsetX}px`,
     "--profile-photo-offset-y": `${crop.offsetY}px`,
     "--profile-photo-zoom": crop.zoom,
@@ -676,7 +759,7 @@ const ProfilePhotoCropModal = ({
   };
 
   return (
-    <div className="profile-modal profile-photo-modal" role="presentation">
+    <div className="profile-modal profile-photo-modal" ref={modalRef} role="presentation">
       <button
         aria-label="Tutup popup crop foto profil"
         className="profile-modal__backdrop"
@@ -689,6 +772,15 @@ const ProfilePhotoCropModal = ({
         className="profile-modal__panel profile-photo-modal__panel"
         role="dialog"
       >
+        <button
+          aria-label="Tutup popup crop foto profil"
+          className="profile-photo-modal__close"
+          disabled={crop.isUploading}
+          onClick={onRequestClose}
+          type="button"
+        >
+          X
+        </button>
         <header>
           <h2 id="profile-photo-crop-title">Atur Foto Profil</h2>
           <p>
@@ -756,10 +848,10 @@ const ProfilePhotoCropModal = ({
         <div className="profile-modal__actions">
           <button
             disabled={crop.isUploading}
-            onClick={onRequestClose}
+            onClick={onChangeImage}
             type="button"
           >
-            Batalkan
+            Ganti gambar
           </button>
           <button
             className="profile-modal__primary"
@@ -787,15 +879,15 @@ const ProfilePhotoCropModal = ({
             </p>
           </header>
           <div className="profile-modal__actions">
-            <button onClick={onKeepEditing} type="button">
-              Lanjut edit
+            <button onClick={onConfirmClose} type="button">
+              Batalkan upload
             </button>
             <button
               className="profile-modal__primary"
-              onClick={onConfirmClose}
+              onClick={onKeepEditing}
               type="button"
             >
-              Batalkan upload
+              Lanjut edit
             </button>
           </div>
         </section>
@@ -1050,44 +1142,77 @@ export const Profile = ({
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setProfilePhotoCrop({
-      cropSize: PROFILE_PHOTO_INITIAL_CROP_SIZE,
-      file,
-      fileName: file.name,
-      isOpen: true,
-      isUploading: false,
-      message: "",
-      objectUrl,
-      offsetX: 0,
-      offsetY: 0,
-      zoom: 1,
-    });
     setIsPhotoCloseConfirmOpen(false);
     setFeedback(null);
+
+    const objectUrl = URL.createObjectURL(file);
+
+    void loadImage(objectUrl)
+      .then((image) => {
+        setProfilePhotoCrop({
+          cropSize: getInitialProfilePhotoCropSize(
+            image.naturalWidth,
+            image.naturalHeight,
+          ),
+          file,
+          fileName: file.name,
+          isOpen: true,
+          isUploading: false,
+          message: "",
+          naturalHeight: image.naturalHeight,
+          naturalWidth: image.naturalWidth,
+          objectUrl,
+          offsetX: 0,
+          offsetY: 0,
+          zoom: 1,
+        });
+      })
+      .catch(() => {
+        URL.revokeObjectURL(objectUrl);
+        setFeedback({
+          message: "Foto profil gagal dibaca.",
+          type: "error",
+        });
+      });
   };
 
   const updateProfilePhotoCrop = (
     updates: Partial<ProfilePhotoCropTransform>,
   ) => {
-    setProfilePhotoCrop((current) => ({
-      ...current,
-      cropSize: clampProfilePhotoCropSize(
+    setProfilePhotoCrop((current) => {
+      const zoom = clampProfilePhotoZoom(updates.zoom ?? current.zoom);
+      const layout = getProfilePhotoImageLayout(
+        current.naturalWidth,
+        current.naturalHeight,
+        zoom,
+      );
+      const maxCropSize = Math.min(
+        PROFILE_PHOTO_EDITOR_SIZE,
+        layout.width,
+        layout.height,
+      );
+      const cropSize = clampProfilePhotoCropSize(
         updates.cropSize ?? current.cropSize,
-      ),
-      message: "",
-      offsetX: clampProfilePhotoOffset(
-        updates.offsetX ?? current.offsetX,
-        clampProfilePhotoCropSize(updates.cropSize ?? current.cropSize),
-        clampProfilePhotoZoom(updates.zoom ?? current.zoom),
-      ),
-      offsetY: clampProfilePhotoOffset(
-        updates.offsetY ?? current.offsetY,
-        clampProfilePhotoCropSize(updates.cropSize ?? current.cropSize),
-        clampProfilePhotoZoom(updates.zoom ?? current.zoom),
-      ),
-      zoom: clampProfilePhotoZoom(updates.zoom ?? current.zoom),
-    }));
+        maxCropSize,
+      );
+
+      return {
+        ...current,
+        cropSize,
+        message: "",
+        offsetX: clampProfilePhotoOffset(
+          updates.offsetX ?? current.offsetX,
+          layout.width,
+          cropSize,
+        ),
+        offsetY: clampProfilePhotoOffset(
+          updates.offsetY ?? current.offsetY,
+          layout.height,
+          cropSize,
+        ),
+        zoom,
+      };
+    });
   };
 
   const requestCloseProfilePhotoCrop = () => {
@@ -1676,6 +1801,7 @@ export const Profile = ({
       <ProfilePhotoCropModal
         crop={profilePhotoCrop}
         isCloseConfirmOpen={isPhotoCloseConfirmOpen}
+        onChangeImage={openPhotoPicker}
         onConfirmClose={closeProfilePhotoCrop}
         onKeepEditing={() => setIsPhotoCloseConfirmOpen(false)}
         onRequestClose={requestCloseProfilePhotoCrop}

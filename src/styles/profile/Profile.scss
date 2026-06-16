@@ -723,8 +723,41 @@
 
 .profile-photo-modal__panel {
   max-width: 520px;
+  padding-top: 56px;
   width: min(100%, 520px);
   z-index: 1;
+}
+
+.profile-photo-modal__close {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--profile-border);
+  border-radius: 6px;
+  color: var(--profile-maroon-dark);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  height: 34px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  width: 34px;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(226, 191, 185, 0.16);
+    outline: none;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
 }
 
 .profile-photo-modal__stage {
@@ -748,19 +781,17 @@
 
   img {
     display: block;
-    height: 100%;
-    inset: 0;
-    object-fit: cover;
+    height: var(--profile-photo-image-height);
+    left: 50%;
+    object-fit: contain;
     pointer-events: none;
     position: absolute;
+    top: 50%;
     transform:
-      translate(
-        var(--profile-photo-offset-x),
-        var(--profile-photo-offset-y)
-      )
-      scale(var(--profile-photo-zoom));
+      translate(-50%, -50%)
+      translate(var(--profile-photo-offset-x), var(--profile-photo-offset-y));
     transform-origin: center;
-    width: 100%;
+    width: var(--profile-photo-image-width);
   }
 
   &:active {
