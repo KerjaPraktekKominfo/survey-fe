@@ -38,6 +38,7 @@ type ProfileProps = {
   onOpenChangePassword?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenSurveyList?: () => void;
+  onOpenUserManagement?: () => void;
   onProfileLoaded?: (profile: AccountProfile) => void;
   onUnauthorized?: () => void;
 };
@@ -906,6 +907,7 @@ export const Profile = ({
   onOpenChangePassword,
   onOpenManageSurveys,
   onOpenSurveyList,
+  onOpenUserManagement,
   onProfileLoaded,
   onUnauthorized,
 }: ProfileProps) => {
@@ -1108,6 +1110,10 @@ export const Profile = ({
 
     if (label === "Kelola Survey") {
       onOpenManageSurveys?.();
+    }
+
+    if (label === "User Management") {
+      onOpenUserManagement?.();
     }
   };
 

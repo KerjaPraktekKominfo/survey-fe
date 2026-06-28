@@ -24,6 +24,7 @@ type SurveyFillProps = {
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyList?: () => void;
+  onOpenUserManagement?: () => void;
   onUnauthorized?: () => void;
   surveyId: number | null;
 };
@@ -357,6 +358,7 @@ export const SurveyFill = ({
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyList,
+  onOpenUserManagement,
   onUnauthorized,
   surveyId,
 }: SurveyFillProps) => {
@@ -630,6 +632,10 @@ export const SurveyFill = ({
 
     if (label === "Kelola Survey") {
       onOpenManageSurveys?.();
+    }
+
+    if (label === "User Management") {
+      onOpenUserManagement?.();
     }
   };
 

@@ -36,6 +36,7 @@ type CreateSurveyProps = {
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyList?: () => void;
+  onOpenUserManagement?: () => void;
   onUnauthorized?: () => void;
 };
 
@@ -699,6 +700,7 @@ export const CreateSurvey = ({
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyList,
+  onOpenUserManagement,
   onUnauthorized,
 }: CreateSurveyProps) => {
   const draftStorageKey = useMemo(
@@ -902,6 +904,10 @@ export const CreateSurvey = ({
 
     if (label === "Kelola Survey") {
       onOpenManageSurveys?.();
+    }
+
+    if (label === "User Management") {
+      onOpenUserManagement?.();
     }
   };
 

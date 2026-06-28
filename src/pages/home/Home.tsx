@@ -25,6 +25,7 @@ type HomeProps = {
   onOpenProfile?: () => void;
   onOpenSurveyDetail?: (surveyId: number | string) => void;
   onOpenSurveyList?: () => void;
+  onOpenUserManagement?: () => void;
 };
 
 type SurveyApiItem = {
@@ -236,6 +237,7 @@ export const Home = ({
   onOpenProfile,
   onOpenSurveyDetail,
   onOpenSurveyList,
+  onOpenUserManagement,
 }: HomeProps) => {
   const [surveys, setSurveys] = useState<SurveyCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -311,6 +313,10 @@ export const Home = ({
 
     if (label === "Kelola Survey") {
       onOpenManageSurveys?.();
+    }
+
+    if (label === "User Management") {
+      onOpenUserManagement?.();
     }
   };
 

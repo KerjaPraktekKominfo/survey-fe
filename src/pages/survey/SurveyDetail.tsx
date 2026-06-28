@@ -27,6 +27,7 @@ type SurveyDetailProps = {
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyList?: () => void;
+  onOpenUserManagement?: () => void;
   onStartSurvey?: (surveyId: number | string) => void;
   onUnauthorized?: () => void;
   surveyId: number | null;
@@ -211,6 +212,7 @@ export const SurveyDetail = ({
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyList,
+  onOpenUserManagement,
   onStartSurvey,
   onUnauthorized,
   surveyId,
@@ -321,6 +323,10 @@ export const SurveyDetail = ({
 
     if (label === "Kelola Survey") {
       onOpenManageSurveys?.();
+    }
+
+    if (label === "User Management") {
+      onOpenUserManagement?.();
     }
   };
 

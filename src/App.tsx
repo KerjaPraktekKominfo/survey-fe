@@ -14,6 +14,7 @@ import { SurveyComplete } from "./pages/survey/SurveyComplete";
 import { SurveyDetail } from "./pages/survey/SurveyDetail";
 import { SurveyFill } from "./pages/survey/SurveyFill";
 import { SurveyList } from "./pages/survey/SurveyList";
+import { UserManagement } from "./pages/user/UserManagement";
 import { API_BASE_URL } from "./lib/api";
 import {
   resolveProfilePhotoUrl,
@@ -34,7 +35,8 @@ type AuthPage =
   | "survey-complete"
   | "survey-detail"
   | "survey-fill"
-  | "survey-list";
+  | "survey-list"
+  | "user-management";
 
 const AUTH_SESSION_KEY = "survey_auth_session";
 const AUTH_TOKEN_KEY = "survey_auth_token";
@@ -42,6 +44,7 @@ const SURVEY_COMPLETION_SESSION_PREFIX = "survey_completion_";
 
 type AccountProfile = ProfilePhotoSource & {
   full_name?: string | null;
+  id?: number | string | null;
   position?: string | null;
   username?: string | null;
 };
@@ -71,6 +74,7 @@ const PAGE_PATHS: Record<AuthPage, string> = {
   "survey-detail": "/surveys",
   "survey-fill": "/surveys",
   "survey-list": "/surveys",
+  "user-management": "/users",
 };
 
 const CREATE_SURVEY_BASE_PATH = "/surveys/create";
@@ -151,7 +155,8 @@ const getInitialAuthPage = (): AuthPage => {
       isEditSurveyPath(normalizedPath) ||
       isSurveyCompletePath(normalizedPath) ||
       isSurveyFillPath(normalizedPath) ||
-      normalizedPath === PAGE_PATHS["manage-surveys"]) &&
+      normalizedPath === PAGE_PATHS["manage-surveys"] ||
+      normalizedPath === PAGE_PATHS["user-management"]) &&
     !hasStoredAuth()
   ) {
     return "login";
@@ -187,6 +192,10 @@ const getInitialAuthPage = (): AuthPage => {
 
   if (normalizedPath === PAGE_PATHS["survey-list"]) {
     return "survey-list";
+  }
+
+  if (normalizedPath === PAGE_PATHS["user-management"]) {
+    return "user-management";
   }
 
   if (isSurveyDetailPath(normalizedPath)) {
@@ -459,6 +468,15 @@ function App() {
     goToLogin();
   }, [goToLogin, isAuthenticated, navigate]);
 
+  const openUserManagement = useCallback(() => {
+    if (isAuthenticated) {
+      navigate("user-management");
+      return;
+    }
+
+    goToLogin();
+  }, [goToLogin, isAuthenticated, navigate]);
+
   const openSurveyList = useCallback(() => {
     navigate("survey-list");
   }, [navigate]);
@@ -625,6 +643,7 @@ function App() {
         onOpenProfile={openProfile}
         onOpenSurveyDetail={openSurveyDetail}
         onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
       />,
     );
   }
@@ -642,6 +661,7 @@ function App() {
         onOpenProfile={openProfile}
         accountPosition={accountProfile?.position}
         onOpenSurveyDetail={openSurveyDetail}
+        onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
       />,
     );
@@ -659,6 +679,7 @@ function App() {
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
         onStartSurvey={openSurveyFill}
         onUnauthorized={handleUnauthorized}
         surveyId={surveyDetailId}
@@ -679,6 +700,7 @@ function App() {
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
         surveyId={surveyFillId}
       />,
@@ -698,6 +720,7 @@ function App() {
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
         surveyId={surveyCompleteId}
       />,
@@ -716,6 +739,7 @@ function App() {
         onOpenChangePassword={openChangePassword}
         onOpenManageSurveys={openManageSurveys}
         onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
         onProfileLoaded={setAccountProfile}
         onUnauthorized={handleUnauthorized}
       />,
@@ -735,6 +759,25 @@ function App() {
         onEditSurvey={openEditSurvey}
         onOpenSurveyList={openSurveyList}
         onOpenProfile={openProfile}
+        onOpenUserManagement={openUserManagement}
+        onUnauthorized={handleUnauthorized}
+      />,
+    );
+  }
+
+  if (authPage === "user-management") {
+    return withLogoutDialog(
+      <UserManagement
+        accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
+        accountId={accountProfile?.id}
+        accountName={accountName}
+        isAuthenticated={isAuthenticated}
+        onAuthAction={handleAuthAction}
+        onBackHome={openHome}
+        onOpenManageSurveys={openManageSurveys}
+        onOpenProfile={openProfile}
+        onOpenSurveyList={openSurveyList}
         onUnauthorized={handleUnauthorized}
       />,
     );
@@ -752,6 +795,7 @@ function App() {
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
       />,
     );
@@ -771,6 +815,7 @@ function App() {
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
       />,
     );

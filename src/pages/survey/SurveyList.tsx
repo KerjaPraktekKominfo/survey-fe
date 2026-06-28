@@ -27,6 +27,7 @@ type SurveyListProps = {
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyDetail?: (surveyId: number | string) => void;
+  onOpenUserManagement?: () => void;
   onUnauthorized?: () => void;
 };
 
@@ -398,6 +399,7 @@ export const SurveyList = ({
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyDetail,
+  onOpenUserManagement,
   onUnauthorized,
 }: SurveyListProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -564,6 +566,10 @@ export const SurveyList = ({
 
     if (label === "Kelola Survey") {
       onOpenManageSurveys?.();
+    }
+
+    if (label === "User Management") {
+      onOpenUserManagement?.();
     }
   };
 
