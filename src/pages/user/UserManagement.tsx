@@ -8,6 +8,10 @@ import paginationNextIcon from "../../assets/user/user-pagination-next.svg";
 import paginationPrevIcon from "../../assets/user/user-pagination-prev.svg";
 import searchIcon from "../../assets/user/user-search-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
+import {
+  resolveProfilePhotoUrl,
+  type ProfilePhotoSource,
+} from "../../lib/profilePhoto";
 import "../../styles/user/UserManagement.scss";
 
 const AUTH_TOKEN_KEY = "survey_auth_token";
@@ -36,6 +40,8 @@ type UserApiItem = {
   nik?: string | null;
   phone?: string | null;
   position?: string | null;
+  profile_photo_path?: string | null;
+  profile_photo_url?: string | null;
   role?: string | null;
   role_id?: number | string | null;
   updated_at?: string | null;
@@ -52,7 +58,7 @@ type ApiCollectionResult<T> = {
   message?: string;
 };
 
-type ManagedUser = {
+type ManagedUser = ProfilePhotoSource & {
   email?: string | null;
   fullName: string;
   id: number;
@@ -183,6 +189,8 @@ const normalizeUser = (user: UserApiItem): ManagedUser => ({
   nik: user.nik?.trim() || "-",
   phone: user.phone,
   position: user.position,
+  profile_photo_path: user.profile_photo_path,
+  profile_photo_url: user.profile_photo_url,
   roleId: Math.max(0, parseNumber(user.role_id)),
   roleName: normalizeRoleName(user.role),
   username: user.username?.trim() || "-",
@@ -287,6 +295,31 @@ const UserManagementSkeleton = () => (
     ))}
   </>
 );
+
+const UserAvatar = ({ user }: { user: ManagedUser }) => {
+  const photoSrc = resolveProfilePhotoUrl(user, "");
+
+  return (
+    <span
+      className={`user-management-avatar user-management-avatar--${getRoleClassName(
+        user.roleName,
+      )} ${photoSrc ? "has-photo" : ""}`}
+    >
+      {photoSrc && (
+        <img
+          alt=""
+          aria-hidden="true"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+            event.currentTarget.parentElement?.classList.remove("has-photo");
+          }}
+          src={photoSrc}
+        />
+      )}
+      <span>{getInitials(user.fullName)}</span>
+    </span>
+  );
+};
 
 export const UserManagement = ({
   accountAvatarSrc,
@@ -769,13 +802,7 @@ export const UserManagement = ({
                       <tr key={user.id}>
                         <td>
                           <div className="user-management-user">
-                            <span
-                              className={`user-management-avatar user-management-avatar--${getRoleClassName(
-                                user.roleName,
-                              )}`}
-                            >
-                              {getInitials(user.fullName)}
-                            </span>
+                            <UserAvatar user={user} />
                             <div>
                               <strong>{user.fullName}</strong>
                               <small>{user.nik}</small>

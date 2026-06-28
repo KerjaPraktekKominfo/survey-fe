@@ -375,7 +375,28 @@
   height: 32px;
   justify-content: center;
   line-height: 16px;
+  overflow: hidden;
   width: 32px;
+
+  img {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+  }
+
+  > span {
+    display: inline-flex;
+  }
+
+  &.has-photo {
+    background: #e5eeff;
+    color: transparent;
+
+    > span {
+      display: none;
+    }
+  }
 }
 
 .user-management-avatar--superadmin {
