@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "../../components/sidebar";
 import { Topbar } from "../../components/topbar";
 import adminAvatar from "../../assets/home/home-admin-avatar.png";
@@ -14,7 +14,7 @@ import { API_BASE_URL } from "../../lib/api";
 import "../../styles/survey/SurveyList.scss";
 
 const AUTH_TOKEN_KEY = "survey_auth_token";
-const PER_PAGE_OPTIONS = [3, 6, 9, 12] as const;
+const PER_PAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
 type SurveyListProps = {
   accountDescription?: string;
@@ -44,8 +44,21 @@ type SurveyApiItem = {
 };
 
 type SurveyApiResult = {
-  data?: SurveyApiItem[] | { items?: SurveyApiItem[]; surveys?: SurveyApiItem[] };
+  data?:
+    | SurveyApiItem[]
+    | {
+        items?: SurveyApiItem[];
+        meta?: SurveyListMeta;
+        surveys?: SurveyApiItem[];
+      };
   message?: string;
+};
+
+type SurveyListMeta = {
+  page?: number | string | null;
+  per_page?: number | string | null;
+  total?: number | string | null;
+  total_pages?: number | string | null;
 };
 
 type SurveyCard = {
@@ -58,6 +71,20 @@ type SurveyCard = {
   positions: string[];
   status: string;
   title: string;
+};
+
+type PaginationMeta = {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+};
+
+const initialMeta: PaginationMeta = {
+  page: 1,
+  perPage: 5,
+  total: 0,
+  totalPages: 1,
 };
 
 const POSITION_LABELS: Record<string, string> = {
@@ -140,6 +167,29 @@ const extractSurveys = (result: SurveyApiResult) => {
   return [];
 };
 
+const parseNumber = (value: number | string | null | undefined, fallback = 0) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : fallback;
+  }
+
+  return fallback;
+};
+
+const normalizeMeta = (
+  meta: SurveyListMeta | undefined,
+  fallbackPerPage: number,
+): PaginationMeta => ({
+  page: Math.max(1, parseNumber(meta?.page, 1)),
+  perPage: Math.max(1, parseNumber(meta?.per_page, fallbackPerPage)),
+  total: Math.max(0, parseNumber(meta?.total, 0)),
+  totalPages: Math.max(1, parseNumber(meta?.total_pages, 1)),
+});
+
 const normalizePositions = (positions?: string[] | string | null) => {
   if (Array.isArray(positions)) {
     return positions.filter(Boolean);
@@ -216,17 +266,22 @@ const formatDate = (dateValue?: string | null) => {
   }
 
   return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
+    day: "numeric",
+    month: "long",
     year: "numeric",
   })
     .format(date)
     .replace(/\./g, "");
 };
 
-const getEndDateLabel = (closesAt?: string | null) => {
-  const endDate = formatDate(closesAt);
-  return endDate ? `Berakhir: ${endDate}` : "Tanpa tanggal selesai";
+const getPeriodLabel = (
+  opensAt?: string | null,
+  closesAt?: string | null,
+) => {
+  const startDate = formatDate(opensAt) ?? "Tanpa tanggal mulai";
+  const endDate = formatDate(closesAt) ?? "Tanpa tanggal berakhir";
+
+  return `Periode: ${startDate} - ${endDate}`;
 };
 
 const getStatusLabel = (status: string) => STATUS_LABELS[status] ?? status;
@@ -289,6 +344,33 @@ const matchesPosition = (survey: SurveyCard, position: string) => {
   return survey.positions.includes(position);
 };
 
+const buildEndpoint = (
+  search: string,
+  page: number,
+  perPage: number,
+  status: string,
+  position: string,
+) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+  });
+
+  if (search) {
+    params.set("search", search);
+  }
+
+  if (status) {
+    params.set("status", status);
+  }
+
+  if (position) {
+    params.set("position", position);
+  }
+
+  return `${API_BASE_URL}/surveys?${params.toString()}`;
+};
+
 const SurveyListSkeleton = () => (
   <>
     {Array.from({ length: 3 }, (_, index) => (
@@ -324,22 +406,14 @@ export const SurveyList = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
-  const [perPage, setPerPage] = useState<(typeof PER_PAGE_OPTIONS)[number]>(3);
+  const [perPage, setPerPage] = useState<(typeof PER_PAGE_OPTIONS)[number]>(5);
   const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta>(initialMeta);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [isLimitOpen, setIsLimitOpen] = useState(false);
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
-
-  useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      setSearchQuery(searchInput.trim().toLowerCase());
-      setPage(1);
-    }, 200);
-
-    return () => window.clearTimeout(timerId);
-  }, [searchInput]);
 
   useEffect(() => {
     if (!feedbackMessage) {
@@ -362,12 +436,15 @@ export const SurveyList = ({
       setHasLoadError(false);
 
       try {
-        const response = await fetch(`${API_BASE_URL}/surveys`, {
-          credentials: "include",
-          headers: authHeaders(),
-          method: "GET",
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          buildEndpoint(searchQuery, page, perPage, statusFilter, positionFilter),
+          {
+            credentials: "include",
+            headers: authHeaders(),
+            method: "GET",
+            signal: controller.signal,
+          },
+        );
 
         if (response.status === 401) {
           onUnauthorized?.();
@@ -382,15 +459,34 @@ export const SurveyList = ({
         const nextSurveys = extractSurveys(result)
           .map(normalizeSurvey)
           .filter((survey) => isPublicSurveyStatus(survey.status));
+        const nextMeta = Array.isArray(result.data)
+          ? {
+              page,
+              perPage,
+              total: nextSurveys.length,
+              totalPages: Math.max(1, Math.ceil(nextSurveys.length / perPage)),
+            }
+          : normalizeMeta(result.data?.meta, perPage);
 
         setSurveys(nextSurveys);
+        setMeta(nextMeta);
         setHasLoadError(false);
+
+        if (page !== nextMeta.page) {
+          setPage(nextMeta.page);
+        }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
         setSurveys([]);
+        setMeta({
+          page: 1,
+          perPage,
+          total: 0,
+          totalPages: 1,
+        });
         setHasLoadError(true);
         setFeedbackMessage(
           error instanceof Error
@@ -407,12 +503,14 @@ export const SurveyList = ({
     void fetchSurveys();
 
     return () => controller.abort();
-  }, [onUnauthorized]);
+  }, [onUnauthorized, page, perPage, positionFilter, searchQuery, statusFilter]);
 
-  const filteredSurveys = useMemo(() => {
-    const source = hasLoadError ? fallbackSurveys : surveys;
+  const fallbackFilteredSurveys = useMemo(() => {
+    if (!hasLoadError) {
+      return [];
+    }
 
-    return source.filter((survey) => {
+    return fallbackSurveys.filter((survey) => {
       const matchesSearch =
         searchQuery === "" ||
         survey.title.toLowerCase().includes(searchQuery) ||
@@ -426,17 +524,28 @@ export const SurveyList = ({
         matchesPosition(survey, positionFilter)
       );
     });
-  }, [hasLoadError, positionFilter, searchQuery, statusFilter, surveys]);
+  }, [hasLoadError, positionFilter, searchQuery, statusFilter]);
 
-  const totalPages = Math.max(
+  const fallbackTotalPages = Math.max(
     1,
-    Math.ceil(filteredSurveys.length / perPage),
+    Math.ceil(fallbackFilteredSurveys.length / perPage),
   );
-  const currentPage = Math.min(page, totalPages);
-  const visibleSurveys = filteredSurveys.slice(
-    (currentPage - 1) * perPage,
-    currentPage * perPage,
-  );
+  const currentPage = hasLoadError
+    ? Math.min(page, fallbackTotalPages)
+    : meta.page;
+  const totalPages = hasLoadError ? fallbackTotalPages : meta.totalPages;
+  const visibleSurveys = hasLoadError
+    ? fallbackFilteredSurveys.slice(
+        (currentPage - 1) * perPage,
+        currentPage * perPage,
+      )
+    : surveys;
+
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSearchQuery(searchInput.trim().toLowerCase());
+    setPage(1);
+  };
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
@@ -527,18 +636,27 @@ export const SurveyList = ({
           </header>
 
           <section className="survey-list-filters" aria-label="Filter survey">
-            <label className="survey-list-search" htmlFor="survey-list-search">
-              <span>Cari judul survei</span>
-              <img src={searchIcon} alt="" aria-hidden="true" />
-              <input
-                autoComplete="off"
-                id="survey-list-search"
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Cari judul survei..."
-                type="search"
-                value={searchInput}
-              />
-            </label>
+            <form
+              className="survey-list-search-form"
+              onSubmit={handleSearchSubmit}
+            >
+              <label className="survey-list-search" htmlFor="survey-list-search">
+                <span>Cari judul survei</span>
+                <img src={searchIcon} alt="" aria-hidden="true" />
+                <input
+                  autoComplete="off"
+                  id="survey-list-search"
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Cari judul survei..."
+                  type="search"
+                  value={searchInput}
+                />
+              </label>
+              <button className="survey-list-search-button" type="submit">
+                <img src={searchIcon} alt="" aria-hidden="true" />
+                Cari
+              </button>
+            </form>
 
             <div className="survey-list-filter-controls">
               <label>
@@ -625,20 +743,23 @@ export const SurveyList = ({
                   </div>
 
                   <div className="survey-list-card__body">
-                    <span
-                      className={`survey-list-status survey-list-status--${survey.status}`}
-                    >
-                      <img src={lockIcon} alt="" aria-hidden="true" />
-                      {getStatusLabel(survey.status)}
-                    </span>
-
-                    <div className="survey-list-card__meta">
-                      <div>
-                        {getPositionBadges(survey.positions).map((label) => (
-                          <span key={label}>{label}</span>
-                        ))}
+                    <div className="survey-list-card__top">
+                      <div className="survey-list-card__meta">
+                        <div>
+                          {getPositionBadges(survey.positions).map((label) => (
+                            <span key={label}>{label}</span>
+                          ))}
+                        </div>
+                        <small>
+                          {getPeriodLabel(survey.opensAt, survey.closesAt)}
+                        </small>
                       </div>
-                      <small>{getEndDateLabel(survey.closesAt)}</small>
+                      <span
+                        className={`survey-list-status survey-list-status--${survey.status}`}
+                      >
+                        <img src={lockIcon} alt="" aria-hidden="true" />
+                        {getStatusLabel(survey.status)}
+                      </span>
                     </div>
 
                     <h2>{survey.title}</h2>

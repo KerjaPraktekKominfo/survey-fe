@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Sidebar } from "../../components/sidebar";
 import { Topbar } from "../../components/topbar";
 import adminAvatar from "../../assets/home/home-admin-avatar.png";
@@ -10,7 +10,7 @@ import { API_BASE_URL } from "../../lib/api";
 import "../../styles/survey/ManageSurveys.scss";
 
 const AUTH_TOKEN_KEY = "survey_auth_token";
-const PER_PAGE_OPTIONS = [5, 10, 25, 50] as const;
+const PER_PAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
 type ManageSurveysProps = {
   accountDescription?: string;
@@ -359,15 +359,6 @@ export const ManageSurveys = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
-  useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      setPage(1);
-      setSearchQuery(searchInput.trim());
-    }, 250);
-
-    return () => window.clearTimeout(timerId);
-  }, [searchInput]);
-
   const fetchSurveys = useCallback(
     async (signal: AbortSignal) => {
       if (!isAuthenticated) {
@@ -500,6 +491,12 @@ export const ManageSurveys = ({
     setIsPerPageOpen(false);
   };
 
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPage(1);
+    setSearchQuery(searchInput.trim());
+  };
+
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
     setPage(1);
@@ -607,18 +604,23 @@ export const ManageSurveys = ({
           </header>
 
           <section className="manage-survey-filters" aria-label="Filter survey">
-            <label className="manage-survey-search" htmlFor="survey-search">
-              <span>Cari judul survei</span>
-              <img src={searchIcon} alt="" aria-hidden="true" />
-              <input
-                autoComplete="off"
-                id="survey-search"
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Cari judul survei..."
-                type="search"
-                value={searchInput}
-              />
-            </label>
+            <form
+              className="manage-survey-search-form"
+              onSubmit={handleSearchSubmit}
+            >
+              <label className="manage-survey-search" htmlFor="survey-search">
+                <span>Cari judul survei</span>
+                <img src={searchIcon} alt="" aria-hidden="true" />
+                <input
+                  autoComplete="off"
+                  id="survey-search"
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="Cari judul survei..."
+                  type="search"
+                  value={searchInput}
+                />
+              </label>
+            </form>
 
             <div className="manage-survey-filter-controls">
               <label className="manage-survey-select">

@@ -114,7 +114,6 @@
 
 .manage-survey-search {
   display: block;
-  flex: 1 1 auto;
   min-width: 0;
   position: relative;
 
@@ -159,6 +158,11 @@
       box-shadow: 0 0 0 2px rgba(128, 0, 0, 0.12);
     }
   }
+}
+
+.manage-survey-search-form {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .manage-survey-filter-controls {
