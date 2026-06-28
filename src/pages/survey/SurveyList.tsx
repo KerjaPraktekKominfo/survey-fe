@@ -23,6 +23,7 @@ type SurveyListProps = {
   accountPosition?: string | null;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
+  onOpenAccessManagement?: () => void;
   onBackHome?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
@@ -395,6 +396,7 @@ export const SurveyList = ({
   accountPosition,
   isAuthenticated,
   onAuthAction,
+  onOpenAccessManagement,
   onBackHome,
   onOpenManageSurveys,
   onOpenProfile,
@@ -570,6 +572,10 @@ export const SurveyList = ({
 
     if (label === "User Management") {
       onOpenUserManagement?.();
+    }
+
+    if (label === "Pengaturan Hak Akses") {
+      onOpenAccessManagement?.();
     }
   };
 

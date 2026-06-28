@@ -32,6 +32,7 @@ type CreateSurveyProps = {
   isAuthenticated: boolean;
   mode?: "create" | "edit";
   onAuthAction?: () => void;
+  onOpenAccessManagement?: () => void;
   onBackHome?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
@@ -696,6 +697,7 @@ export const CreateSurvey = ({
   isAuthenticated,
   mode = "create",
   onAuthAction,
+  onOpenAccessManagement,
   onBackHome,
   onOpenManageSurveys,
   onOpenProfile,
@@ -908,6 +910,10 @@ export const CreateSurvey = ({
 
     if (label === "User Management") {
       onOpenUserManagement?.();
+    }
+
+    if (label === "Pengaturan Hak Akses") {
+      onOpenAccessManagement?.();
     }
   };
 

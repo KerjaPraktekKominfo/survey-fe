@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import adminAvatar from "./assets/home/home-admin-avatar.png";
+import { AccessManagement } from "./pages/access/AccessManagement";
 import { ForgotPassword } from "./pages/auth/ForgotPassword";
 import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
@@ -22,6 +23,7 @@ import {
 } from "./lib/profilePhoto";
 
 type AuthPage =
+  | "access-management"
   | "change-password"
   | "create-survey"
   | "edit-survey"
@@ -46,6 +48,7 @@ type AccountProfile = ProfilePhotoSource & {
   full_name?: string | null;
   id?: number | string | null;
   position?: string | null;
+  role_id?: number | string | null;
   username?: string | null;
 };
 
@@ -60,6 +63,7 @@ type SurveyCompletionPayload = {
 };
 
 const PAGE_PATHS: Record<AuthPage, string> = {
+  "access-management": "/access-control",
   "change-password": "/profile/change-password",
   "create-survey": "/surveys/create/informasi-umum",
   "edit-survey": "/surveys/manage",
@@ -156,7 +160,8 @@ const getInitialAuthPage = (): AuthPage => {
       isSurveyCompletePath(normalizedPath) ||
       isSurveyFillPath(normalizedPath) ||
       normalizedPath === PAGE_PATHS["manage-surveys"] ||
-      normalizedPath === PAGE_PATHS["user-management"]) &&
+      normalizedPath === PAGE_PATHS["user-management"] ||
+      normalizedPath === PAGE_PATHS["access-management"]) &&
     !hasStoredAuth()
   ) {
     return "login";
@@ -196,6 +201,10 @@ const getInitialAuthPage = (): AuthPage => {
 
   if (normalizedPath === PAGE_PATHS["user-management"]) {
     return "user-management";
+  }
+
+  if (normalizedPath === PAGE_PATHS["access-management"]) {
+    return "access-management";
   }
 
   if (isSurveyDetailPath(normalizedPath)) {
@@ -477,6 +486,15 @@ function App() {
     goToLogin();
   }, [goToLogin, isAuthenticated, navigate]);
 
+  const openAccessManagement = useCallback(() => {
+    if (isAuthenticated) {
+      navigate("access-management");
+      return;
+    }
+
+    goToLogin();
+  }, [goToLogin, isAuthenticated, navigate]);
+
   const openSurveyList = useCallback(() => {
     navigate("survey-list");
   }, [navigate]);
@@ -639,6 +657,7 @@ function App() {
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
+        onOpenAccessManagement={openAccessManagement}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyDetail={openSurveyDetail}
@@ -657,6 +676,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
+        onOpenAccessManagement={openAccessManagement}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         accountPosition={accountProfile?.position}
@@ -676,6 +696,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
+        onOpenAccessManagement={openAccessManagement}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -697,6 +718,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onCompleteSurvey={openSurveyComplete}
+        onOpenAccessManagement={openAccessManagement}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -717,6 +739,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
+        onOpenAccessManagement={openAccessManagement}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -737,6 +760,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenChangePassword={openChangePassword}
+        onOpenAccessManagement={openAccessManagement}
         onOpenManageSurveys={openManageSurveys}
         onOpenSurveyList={openSurveyList}
         onOpenUserManagement={openUserManagement}
@@ -757,6 +781,7 @@ function App() {
         onBackHome={openHome}
         onCreateSurvey={openCreateSurvey}
         onEditSurvey={openEditSurvey}
+        onOpenAccessManagement={openAccessManagement}
         onOpenSurveyList={openSurveyList}
         onOpenProfile={openProfile}
         onOpenUserManagement={openUserManagement}
@@ -774,10 +799,30 @@ function App() {
         accountName={accountName}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
+        onOpenAccessManagement={openAccessManagement}
         onBackHome={openHome}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
+        onUnauthorized={handleUnauthorized}
+      />,
+    );
+  }
+
+  if (authPage === "access-management") {
+    return withLogoutDialog(
+      <AccessManagement
+        accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
+        accountName={accountName}
+        accountRoleId={accountProfile?.role_id}
+        isAuthenticated={isAuthenticated}
+        onAuthAction={handleAuthAction}
+        onBackHome={openHome}
+        onOpenManageSurveys={openManageSurveys}
+        onOpenProfile={openProfile}
+        onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
       />,
     );
@@ -792,6 +837,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
+        onOpenAccessManagement={openAccessManagement}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -812,6 +858,7 @@ function App() {
         mode="edit"
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
+        onOpenAccessManagement={openAccessManagement}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}

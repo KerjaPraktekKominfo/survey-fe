@@ -21,6 +21,7 @@ type HomeProps = {
   accountName?: string;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
+  onOpenAccessManagement?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyDetail?: (surveyId: number | string) => void;
@@ -233,6 +234,7 @@ export const Home = ({
   accountName,
   isAuthenticated,
   onAuthAction,
+  onOpenAccessManagement,
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyDetail,
@@ -317,6 +319,10 @@ export const Home = ({
 
     if (label === "User Management") {
       onOpenUserManagement?.();
+    }
+
+    if (label === "Pengaturan Hak Akses") {
+      onOpenAccessManagement?.();
     }
   };
 

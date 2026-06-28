@@ -18,6 +18,7 @@ type SurveyCompleteProps = {
   accountName?: string;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
+  onOpenAccessManagement?: () => void;
   onBackHome?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
@@ -96,6 +97,7 @@ export const SurveyComplete = ({
   accountName,
   isAuthenticated,
   onAuthAction,
+  onOpenAccessManagement,
   onBackHome,
   onOpenManageSurveys,
   onOpenProfile,
@@ -178,6 +180,10 @@ export const SurveyComplete = ({
 
     if (label === "User Management") {
       onOpenUserManagement?.();
+    }
+
+    if (label === "Pengaturan Hak Akses") {
+      onOpenAccessManagement?.();
     }
   };
 
