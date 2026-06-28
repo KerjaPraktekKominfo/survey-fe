@@ -18,9 +18,9 @@ import targetIcon from "../../assets/survey/create/create-target.svg";
 import uploadIcon from "../../assets/survey/create/create-upload.svg";
 import defaultThumbnailPreview from "../../assets/survey/create-thumbnail-preview.png";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import "../../styles/survey/CreateSurvey.scss";
 
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const DRAFT_STORAGE_KEY = "survey_create_draft";
 const MAX_QUESTION_DEPTH = 3;
 
@@ -244,14 +244,6 @@ const createConditionalQuestion = (
     parentOptionLocalId: parentOption.localId,
     type: "free_text",
   });
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (): Record<string, string> => {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 const isChoiceQuestion = (type: QuestionType) =>
   ["checkbox", "dropdown", "radio_button"].includes(type);
@@ -553,7 +545,7 @@ const requestFormData = async <TData,>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     body: formData,
     credentials: "include",
-    headers: authHeaders(),
+    headers: authHeaders("application/json"),
     method: "POST",
   });
 
@@ -786,7 +778,7 @@ export const CreateSurvey = ({
       try {
         const response = await fetch(`${API_BASE_URL}/surveys/${editSurveyId}`, {
           credentials: "include",
-          headers: authHeaders(),
+          headers: authHeaders("application/json"),
           method: "GET",
           signal: controller.signal,
         });

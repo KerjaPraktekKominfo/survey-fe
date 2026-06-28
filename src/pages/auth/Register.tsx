@@ -15,10 +15,9 @@ import phoneIcon from "../../assets/auth/register/register-phone-icon.svg";
 import submitIcon from "../../assets/auth/register/register-submit-icon.svg";
 import userIcon from "../../assets/auth/register/register-user-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { persistAuthSession } from "../../lib/auth";
 import "../../styles/auth/Register.scss";
 
-const AUTH_SESSION_KEY = "survey_auth_session";
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const CONTACT_CODE_COOLDOWN_MS = 60_000;
 
 type RegisterProps = {
@@ -110,15 +109,12 @@ type LegalInfoModalProps = {
 
 type ApiResult = {
   data?: {
-    access_token?: string;
     address?: string | null;
+    authenticated?: boolean;
     name?: string;
     position?: string;
-    token?: string;
   };
-  access_token?: string;
   message?: string;
-  token?: string;
 };
 
 const initialForm: RegisterForm = {
@@ -152,24 +148,6 @@ const getApiMessage = async (response: Response) => {
   } catch {
     return "Terjadi kesalahan pada server.";
   }
-};
-
-const getToken = (result: ApiResult) =>
-  result.token ?? result.access_token ?? result.data?.token ?? result.data?.access_token;
-
-const persistAuthSession = (result: ApiResult) => {
-  localStorage.removeItem(AUTH_SESSION_KEY);
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  sessionStorage.setItem(AUTH_SESSION_KEY, "1");
-
-  const token = getToken(result);
-
-  if (!token) {
-    sessionStorage.removeItem(AUTH_SESSION_KEY);
-    throw new Error("Token registrasi tidak diterima dari server.");
-  }
-
-  sessionStorage.setItem(AUTH_TOKEN_KEY, token);
 };
 
 const getPositionLabel = (position: string) => {
@@ -1192,8 +1170,8 @@ export const Register = ({
         throw new Error(await getApiMessage(response));
       }
 
-      const result = (await response.json()) as ApiResult;
-      persistAuthSession(result);
+      await response.json();
+      persistAuthSession();
       onRegisterSuccess?.();
     } catch (error) {
       const message =

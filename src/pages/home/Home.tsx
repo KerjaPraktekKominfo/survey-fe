@@ -13,8 +13,6 @@ import transJogjaBus from "../../assets/home/home-trans-jogja-bus.png";
 import { API_BASE_URL } from "../../lib/api";
 import "../../styles/home/Home.scss";
 
-const AUTH_TOKEN_KEY = "survey_auth_token";
-
 type HomeProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
@@ -225,9 +223,6 @@ const getPeriodLabel = (opensAt?: string | null, closesAt?: string | null) => {
   return `${start.day} ${start.month} ${start.year} - ${end.day} ${end.month} ${end.year}`;
 };
 
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
 export const Home = ({
   accountDescription,
   accountAvatarSrc,
@@ -253,11 +248,8 @@ export const Home = ({
       setIsLoading(true);
 
       try {
-        const token = getStoredToken();
-
         const response = await fetch(`${API_BASE_URL}/surveys`, {
           credentials: "include",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           method: "GET",
           signal: controller.signal,
         });

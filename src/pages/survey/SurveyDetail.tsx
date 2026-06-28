@@ -13,9 +13,8 @@ import periodIcon from "../../assets/survey/detail/detail-period.svg";
 import phoneIcon from "../../assets/survey/detail/detail-phone.svg";
 import statusIcon from "../../assets/survey/detail/detail-status.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import "../../styles/survey/SurveyDetail.scss";
-
-const AUTH_TOKEN_KEY = "survey_auth_token";
 
 type SurveyDetailProps = {
   accountDescription?: string;
@@ -95,14 +94,6 @@ const fallbackDetail: SurveyDetailView = {
   opensAt: "2026-01-01",
   status: "open",
   title: "Evaluasi Pelayanan Publik 2026",
-};
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (): HeadersInit => {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 const resolveImageUrl = (path?: string | null) => {

@@ -8,13 +8,13 @@ import paginationNextIcon from "../../assets/user/user-pagination-next.svg";
 import paginationPrevIcon from "../../assets/user/user-pagination-prev.svg";
 import searchIcon from "../../assets/user/user-search-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import {
   resolveProfilePhotoUrl,
   type ProfilePhotoSource,
 } from "../../lib/profilePhoto";
 import "../../styles/user/UserManagement.scss";
 
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const PER_PAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
 type UserManagementProps = {
@@ -86,17 +86,6 @@ type EditFormState = {
 const initialEditForm: EditFormState = {
   isActive: true,
   roleId: "",
-};
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (contentType?: string): HeadersInit => {
-  const token = getStoredToken();
-  return {
-    ...(contentType ? { "Content-Type": contentType } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
 };
 
 const parseNumber = (

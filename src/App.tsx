@@ -18,6 +18,11 @@ import { SurveyList } from "./pages/survey/SurveyList";
 import { UserManagement } from "./pages/user/UserManagement";
 import { API_BASE_URL } from "./lib/api";
 import {
+  authHeaders,
+  clearAuthSession as clearStoredAuthSession,
+  hasAuthSession,
+} from "./lib/auth";
+import {
   resolveProfilePhotoUrl,
   type ProfilePhotoSource,
 } from "./lib/profilePhoto";
@@ -40,8 +45,6 @@ type AuthPage =
   | "survey-list"
   | "user-management";
 
-const AUTH_SESSION_KEY = "survey_auth_session";
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const SURVEY_COMPLETION_SESSION_PREFIX = "survey_completion_";
 
 type AccountProfile = ProfilePhotoSource & {
@@ -126,20 +129,6 @@ const getSurveyDetailIdFromPath = (path = window.location.pathname) => {
 const isSurveyDetailPath = (path: string) =>
   getSurveyDetailIdFromPath(path) !== null;
 
-const hasStoredAuth = () =>
-  Boolean(
-    localStorage.getItem(AUTH_TOKEN_KEY) ||
-      sessionStorage.getItem(AUTH_TOKEN_KEY),
-  );
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (): HeadersInit => {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
 const getResetToken = () => {
   const searchParams = new URLSearchParams(window.location.search);
   return searchParams.get("reset_token") ?? searchParams.get("token");
@@ -162,7 +151,7 @@ const getInitialAuthPage = (): AuthPage => {
       normalizedPath === PAGE_PATHS["manage-surveys"] ||
       normalizedPath === PAGE_PATHS["user-management"] ||
       normalizedPath === PAGE_PATHS["access-management"]) &&
-    !hasStoredAuth()
+    !hasAuthSession()
   ) {
     return "login";
   }
@@ -299,7 +288,7 @@ const clearResetTokenFromUrl = (page: AuthPage = getInitialAuthPage()) => {
 };
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => hasStoredAuth());
+  const [isAuthenticated, setIsAuthenticated] = useState(() => hasAuthSession());
   const [resetToken, setResetToken] = useState<string | null>(() => getResetToken());
   const [authPage, setAuthPage] = useState<AuthPage>(() => getInitialAuthPage());
   const [editSurveyId, setEditSurveyId] = useState<number | null>(() =>
@@ -373,6 +362,13 @@ function App() {
         method: "GET",
       });
 
+      if (response.status === 401) {
+        clearStoredAuthSession();
+        setAccountProfile(null);
+        setIsAuthenticated(false);
+        return;
+      }
+
       if (!response.ok) {
         return;
       }
@@ -403,10 +399,7 @@ function App() {
   }, [navigate]);
 
   const clearAuthSession = useCallback(() => {
-    localStorage.removeItem(AUTH_SESSION_KEY);
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    sessionStorage.removeItem(AUTH_SESSION_KEY);
-    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    clearStoredAuthSession();
     setAccountProfile(null);
   }, []);
 

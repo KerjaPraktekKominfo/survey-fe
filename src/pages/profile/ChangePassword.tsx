@@ -4,9 +4,8 @@ import eyeIcon from "../../assets/auth/password-reset/reset-eye-icon.svg";
 import headerIcon from "../../assets/auth/password-reset/reset-header-icon.svg";
 import submitIcon from "../../assets/auth/password-reset/reset-submit-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import "../../styles/auth/PasswordReset.scss";
-
-const AUTH_TOKEN_KEY = "survey_auth_token";
 
 type ChangePasswordProps = {
   onBackToProfile?: () => void;
@@ -19,22 +18,6 @@ type ApiResult = {
 };
 
 type PasswordField = "currentPassword" | "password" | "passwordConfirmation";
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (): HeadersInit => {
-  const token = getStoredToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  return headers;
-};
 
 const getApiMessage = async (response: Response) => {
   try {
@@ -137,7 +120,7 @@ export const ChangePassword = ({
           passwordConfirmation,
         }),
         credentials: "include",
-        headers: authHeaders(),
+        headers: authHeaders("application/json"),
         method: "POST",
       });
 

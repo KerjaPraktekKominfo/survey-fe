@@ -7,9 +7,9 @@ import historyIcon from "../../assets/survey/complete/complete-history.svg";
 import homeIcon from "../../assets/survey/complete/complete-home.svg";
 import shareIcon from "../../assets/survey/complete/complete-share.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import "../../styles/survey/SurveyComplete.scss";
 
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const COMPLETION_STORAGE_PREFIX = "survey_completion_";
 
 type SurveyCompleteProps = {
@@ -44,14 +44,6 @@ type CompletionSummary = {
 };
 
 const DEFAULT_TITLE = "Evaluasi Pelayanan Publik 2026";
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (): HeadersInit => {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 const getCompletionStorageKey = (surveyId: number | null) =>
   surveyId ? `${COMPLETION_STORAGE_PREFIX}${surveyId}` : "";

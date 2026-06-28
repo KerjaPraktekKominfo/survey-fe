@@ -7,9 +7,9 @@ import limitIcon from "../../assets/survey/manage-limit-icon.svg";
 import searchIcon from "../../assets/survey/manage-search-icon.svg";
 import trashIcon from "../../assets/survey/manage-trash-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import "../../styles/survey/ManageSurveys.scss";
 
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const PER_PAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
 type ManageSurveysProps = {
@@ -104,14 +104,6 @@ const POSITION_LABELS: Record<string, string> = {
   asn: "Pegawai ASN",
   non_asn: "Pegawai Non-ASN",
   public: "Masyarakat Umum",
-};
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (): HeadersInit => {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 const parseNumber = (value: number | string | null | undefined, fallback = 0) => {

@@ -19,13 +19,13 @@ import editIcon from "../../assets/profile/profile-edit.svg";
 import lockIcon from "../../assets/profile/profile-lock.svg";
 import profileAvatar from "../../assets/profile/profile-avatar.jpg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import {
   resolveProfilePhotoUrl,
   type ProfilePhotoSource,
 } from "../../lib/profilePhoto";
 import "../../styles/profile/Profile.scss";
 
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const CONTACT_CODE_COOLDOWN_MS = 60_000;
 
 type ProfileProps = {
@@ -206,24 +206,6 @@ const PROFILE_PHOTO_MIN_CROP_SIZE = 128;
 const PROFILE_PHOTO_MIN_ZOOM = 1;
 const PROFILE_PHOTO_ZOOM_STEP = 0.1;
 const PROFILE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (withJson = false): HeadersInit => {
-  const token = getStoredToken();
-  const headers: Record<string, string> = {};
-
-  if (withJson) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  return headers;
-};
 
 const getApiMessage = async (response: Response) => {
   try {
@@ -1364,7 +1346,7 @@ export const Profile = ({
           [field]: drafts[field].trim(),
         }),
         credentials: "include",
-        headers: authHeaders(true),
+        headers: authHeaders("application/json"),
         method: "PATCH",
       });
 
@@ -1494,7 +1476,7 @@ export const Profile = ({
           code: contactVerification.code,
         }),
         credentials: "include",
-        headers: authHeaders(true),
+        headers: authHeaders("application/json"),
         method: "POST",
       });
 

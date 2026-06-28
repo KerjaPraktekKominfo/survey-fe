@@ -5,10 +5,8 @@ import floatingIcon from "../../assets/auth/login/login-floating-icon.svg";
 import nikIcon from "../../assets/auth/login/login-nik-icon.svg";
 import passwordIcon from "../../assets/auth/login/login-password-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { persistAuthSession } from "../../lib/auth";
 import "../../styles/auth/Login.scss";
-
-const AUTH_SESSION_KEY = "survey_auth_session";
-const AUTH_TOKEN_KEY = "survey_auth_token";
 
 type LoginProps = {
   onForgotPassword?: () => void;
@@ -18,12 +16,9 @@ type LoginProps = {
 
 type ApiResult = {
   data?: {
-    access_token?: string;
-    token?: string;
+    authenticated?: boolean;
   };
-  access_token?: string;
   message?: string;
-  token?: string;
 };
 
 const getApiMessage = async (response: Response) => {
@@ -33,26 +28,6 @@ const getApiMessage = async (response: Response) => {
   } catch {
     return "Terjadi kesalahan pada server.";
   }
-};
-
-const getToken = (result: ApiResult) =>
-  result.token ?? result.access_token ?? result.data?.token ?? result.data?.access_token;
-
-const persistAuthSession = (result: ApiResult, rememberMe: boolean) => {
-  localStorage.removeItem(AUTH_SESSION_KEY);
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  sessionStorage.removeItem(AUTH_SESSION_KEY);
-  sessionStorage.removeItem(AUTH_TOKEN_KEY);
-
-  const storage = rememberMe ? localStorage : sessionStorage;
-  const token = getToken(result);
-
-  if (!token) {
-    throw new Error("Token login tidak diterima dari server.");
-  }
-
-  storage.setItem(AUTH_SESSION_KEY, "1");
-  storage.setItem(AUTH_TOKEN_KEY, token);
 };
 
 export const Login = ({
@@ -105,7 +80,7 @@ export const Login = ({
       }
 
       const result = (await response.json()) as ApiResult;
-      persistAuthSession(result, rememberMe);
+      persistAuthSession(rememberMe);
 
       setFeedback({
         message: result.message ?? "Login berhasil.",

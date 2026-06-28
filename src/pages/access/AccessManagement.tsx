@@ -9,9 +9,9 @@ import plusIcon from "../../assets/access/access-plus.svg";
 import shieldIcon from "../../assets/access/access-role-shield.svg";
 import trashIcon from "../../assets/access/access-trash.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import "../../styles/access/AccessManagement.scss";
 
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const ACTIONS = ["read", "create", "update", "delete"] as const;
 
 type AccessManagementProps = {
@@ -125,18 +125,6 @@ const DEFAULT_ROLE_ICON_VARIANTS = ["neutral", "blue", "maroon"] as const;
 const ROLE_ICON_VARIANTS: Record<string, string> = {
   admin_opd: "blue",
   superadmin: "maroon",
-};
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (contentType?: string): HeadersInit => {
-  const token = getStoredToken();
-
-  return {
-    ...(contentType ? { "Content-Type": contentType } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
 };
 
 const parseNumber = (

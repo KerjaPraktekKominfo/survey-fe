@@ -11,9 +11,9 @@ import paginationNextIcon from "../../assets/survey/list/list-pagination-next.sv
 import paginationPrevIcon from "../../assets/survey/list/list-pagination-prev.svg";
 import searchIcon from "../../assets/survey/list/list-search-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import "../../styles/survey/SurveyList.scss";
 
-const AUTH_TOKEN_KEY = "survey_auth_token";
 const PER_PAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
 type SurveyListProps = {
@@ -144,14 +144,6 @@ const fallbackSurveys: SurveyCard[] = [
     title: "Pemetaan Kebutuhan Layanan Digital OPD",
   },
 ];
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (): HeadersInit => {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 const extractSurveys = (result: SurveyApiResult) => {
   if (Array.isArray(result.data)) {

@@ -9,9 +9,8 @@ import fillAutosaveIcon from "../../assets/survey/fill/fill-autosave.svg";
 import fillSaveDraftIcon from "../../assets/survey/fill/fill-save-draft.svg";
 import lockIcon from "../../assets/survey/list/list-lock-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
+import { authHeaders } from "../../lib/auth";
 import "../../styles/survey/SurveyFill.scss";
-
-const AUTH_TOKEN_KEY = "survey_auth_token";
 
 type SurveyFillProps = {
   accountDescription?: string;
@@ -111,14 +110,6 @@ type DropdownPlacement = {
 const DEFAULT_TITLE = "Evaluasi Pelayanan Publik 2024";
 const DEFAULT_SECTION = "Pertanyaan Survey";
 const LOCAL_DRAFT_PREFIX = "survey_response_draft_";
-
-const getStoredToken = () =>
-  localStorage.getItem(AUTH_TOKEN_KEY) ?? sessionStorage.getItem(AUTH_TOKEN_KEY);
-
-const authHeaders = (): HeadersInit => {
-  const token = getStoredToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 const parsePositiveNumber = (value: unknown) => {
   const parsedValue = Number(value);
@@ -777,10 +768,7 @@ export const SurveyFill = ({
       const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/responses`, {
         body: JSON.stringify(payload),
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
+        headers: authHeaders("application/json"),
         method: "POST",
       });
 
