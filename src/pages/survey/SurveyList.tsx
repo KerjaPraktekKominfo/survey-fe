@@ -310,7 +310,7 @@ const canUseAudienceFilter = (
   const normalizedAccountPosition = normalizeAccountPosition(accountPosition);
 
   if (!normalizedAccountPosition) {
-    return true;
+    return false;
   }
 
   return normalizedAccountPosition === selectedPosition;
