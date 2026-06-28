@@ -32,9 +32,11 @@ type AccessManagementProps = {
 type ActionName = (typeof ACTIONS)[number];
 
 type RoleApiItem = {
+  active_user_count?: number | string | null;
   created_at?: string | null;
   id: number | string;
   name?: string | null;
+  user_count?: number | string | null;
   updated_at?: string | null;
 };
 
@@ -56,8 +58,12 @@ type ApiCollectionResult<T> = {
 };
 
 type Role = {
+  activeUserCount: number;
+  createdAt: string | null;
   id: number;
   name: string;
+  updatedAt: string | null;
+  userCount: number;
 };
 
 type ModulePrivilege = {
@@ -68,8 +74,10 @@ type ModulePrivilege = {
 };
 
 type DeleteTarget = {
+  activeUserCount: number;
   id: number;
   label: string;
+  userCount: number;
 };
 
 const MODULE_META: Record<string, { description: string; label: string }> = {
@@ -109,6 +117,14 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
 const ROLE_ICONS: Record<string, string> = {
   admin_opd: bankIcon,
   superadmin: shieldIcon,
+};
+
+const DEFAULT_ROLE_ICONS = [configIcon, bankIcon, shieldIcon] as const;
+const DEFAULT_ROLE_ICON_VARIANTS = ["neutral", "blue", "maroon"] as const;
+
+const ROLE_ICON_VARIANTS: Record<string, string> = {
+  admin_opd: "blue",
+  superadmin: "maroon",
 };
 
 const getStoredToken = () =>
@@ -162,13 +178,83 @@ const formatRoleLabel = (name: string) => {
 const getRoleDescription = (name: string) =>
   ROLE_DESCRIPTIONS[normalizeRoleName(name)] ?? "Role custom sistem";
 
-const getRoleIcon = (name: string) =>
-  ROLE_ICONS[normalizeRoleName(name)] ?? configIcon;
+const getStableRoleIndex = (name: string) => {
+  const normalizedName = normalizeRoleName(name);
+
+  return Array.from(normalizedName).reduce(
+    (total, character) => total + character.charCodeAt(0),
+    0,
+  );
+};
+
+const getRoleIcon = (name: string) => {
+  const normalizedName = normalizeRoleName(name);
+
+  if (ROLE_ICONS[normalizedName]) {
+    return ROLE_ICONS[normalizedName];
+  }
+
+  return DEFAULT_ROLE_ICONS[getStableRoleIndex(normalizedName) % DEFAULT_ROLE_ICONS.length];
+};
+
+const getRoleIconVariant = (name: string) => {
+  const normalizedName = normalizeRoleName(name);
+
+  if (ROLE_ICON_VARIANTS[normalizedName]) {
+    return ROLE_ICON_VARIANTS[normalizedName];
+  }
+
+  return DEFAULT_ROLE_ICON_VARIANTS[
+    getStableRoleIndex(normalizedName) % DEFAULT_ROLE_ICON_VARIANTS.length
+  ];
+};
 
 const normalizeRole = (role: RoleApiItem): Role => ({
+  activeUserCount: Math.max(
+    0,
+    parseNumber(role.active_user_count ?? role.user_count, 0),
+  ),
+  createdAt: role.created_at ?? null,
   id: Math.max(0, parseNumber(role.id)),
   name: normalizeRoleName(role.name),
+  updatedAt: role.updated_at ?? role.created_at ?? null,
+  userCount: Math.max(0, parseNumber(role.user_count, 0)),
 });
+
+const normalizeRoleInputForApi = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const formatUpdatedAt = (value?: string | null) => {
+  if (!value?.trim()) {
+    return "Belum tersedia";
+  }
+
+  const normalizedValue = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(normalizedValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Belum tersedia";
+  }
+
+  const formattedDate = new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+    minute: "2-digit",
+    month: "short",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  })
+    .format(date)
+    .replace(/\./g, ":");
+
+  return `${formattedDate} WIB`;
+};
 
 const getApiMessage = async (
   response: Response,
@@ -304,19 +390,12 @@ export const AccessManagement = ({
     () => (currentRolePrivileges ? new Set(currentRolePrivileges) : null),
     [currentRolePrivileges],
   );
-  const savedPrivilegeSet = useMemo(
-    () => new Set(savedPrivileges),
-    [savedPrivileges],
-  );
   const draftPrivilegeSet = useMemo(
     () => new Set(draftPrivileges),
     [draftPrivileges],
   );
-  const changedPrivilegeCount = getChangedPrivilegeCount(
-    savedPrivileges,
-    draftPrivileges,
-  );
-  const hasUnsavedChanges = changedPrivilegeCount > 0;
+  const hasUnsavedChanges =
+    getChangedPrivilegeCount(savedPrivileges, draftPrivileges) > 0;
 
   const canUsePrivilege = (privilege: string) =>
     availablePrivilegeSet.has(privilege) &&
@@ -630,7 +709,13 @@ export const AccessManagement = ({
         );
       }
 
+      const updatedAt = new Date().toISOString();
       setSavedPrivileges(draftPrivileges);
+      setRoles((currentRoles) =>
+        currentRoles.map((role) =>
+          role.id === selectedRoleId ? { ...role, updatedAt } : role,
+        ),
+      );
       setFeedbackMessage("Privilege role berhasil disimpan.");
     } catch (error) {
       setFeedbackMessage(
@@ -650,10 +735,12 @@ export const AccessManagement = ({
       return;
     }
 
-    const normalizedRoleName = newRoleName.trim().toLowerCase();
+    const normalizedRoleName = normalizeRoleInputForApi(newRoleName);
 
     if (!/^[a-z0-9_]+$/.test(normalizedRoleName)) {
-      setFeedbackMessage("Nama role hanya boleh huruf kecil, angka, dan underscore.");
+      setFeedbackMessage(
+        "Nama role hanya boleh huruf, angka, spasi, dan underscore.",
+      );
       return;
     }
 
@@ -679,7 +766,20 @@ export const AccessManagement = ({
 
       const result = (await response.json()) as { data?: { id?: number | string } };
       const createdRoleId = parseNumber(result.data?.id, 0);
-      const createdRole = { id: createdRoleId, name: normalizedRoleName };
+
+      if (createdRoleId <= 0) {
+        throw new Error("Role berhasil dibuat, tetapi id role belum diterima.");
+      }
+
+      const createdAt = new Date().toISOString();
+      const createdRole = {
+        activeUserCount: 0,
+        createdAt,
+        id: createdRoleId,
+        name: normalizedRoleName,
+        updatedAt: createdAt,
+        userCount: 0,
+      };
 
       setRoles((currentRoles) =>
         [...currentRoles, createdRole].sort((left, right) =>
@@ -793,7 +893,7 @@ export const AccessManagement = ({
                 <input
                   autoComplete="off"
                   onChange={(event) => setNewRoleName(event.target.value)}
-                  placeholder="contoh: admin_kecamatan"
+                  placeholder="contoh: admin kecamatan"
                   value={newRoleName}
                 />
               </label>
@@ -819,6 +919,7 @@ export const AccessManagement = ({
                 roles.map((role) => {
                   const isActive = role.id === selectedRoleId;
                   const roleLabel = formatRoleLabel(role.name);
+                  const roleIconVariant = getRoleIconVariant(role.name);
 
                   return (
                     <div
@@ -830,7 +931,9 @@ export const AccessManagement = ({
                         onClick={() => setSelectedRoleId(role.id)}
                         type="button"
                       >
-                        <span className="access-role-list__icon">
+                        <span
+                          className={`access-role-list__icon access-role-list__icon--${roleIconVariant}`}
+                        >
                           <img
                             src={getRoleIcon(role.name)}
                             alt=""
@@ -841,12 +944,6 @@ export const AccessManagement = ({
                           <strong>{roleLabel}</strong>
                           <small>{getRoleDescription(role.name)}</small>
                         </span>
-                        <img
-                          className="access-role-list__chevron"
-                          src={chevronIcon}
-                          alt=""
-                          aria-hidden="true"
-                        />
                       </button>
 
                       {canDeleteRole && role.name !== "user" && (
@@ -855,8 +952,10 @@ export const AccessManagement = ({
                           className="access-role-list__delete"
                           onClick={() =>
                             setDeleteTarget({
+                              activeUserCount: role.activeUserCount,
                               id: role.id,
                               label: roleLabel,
+                              userCount: role.userCount,
                             })
                           }
                           type="button"
@@ -864,6 +963,20 @@ export const AccessManagement = ({
                           <img src={trashIcon} alt="" aria-hidden="true" />
                         </button>
                       )}
+
+                      <button
+                        aria-label={`Pilih ${roleLabel}`}
+                        className="access-role-list__chevron-button"
+                        onClick={() => setSelectedRoleId(role.id)}
+                        type="button"
+                      >
+                        <img
+                          className="access-role-list__chevron"
+                          src={chevronIcon}
+                          alt=""
+                          aria-hidden="true"
+                        />
+                      </button>
                     </div>
                   );
                 })
@@ -879,8 +992,18 @@ export const AccessManagement = ({
                 <AccessSkeleton />
               ) : selectedRole ? (
                 <>
+                  <div className="access-role-impact">
+                    <span aria-hidden="true">i</span>
+                    <p>
+                      Perubahan pada role ini akan berdampak pada{" "}
+                      {selectedRole.activeUserCount} user aktif.
+                    </p>
+                  </div>
+
                   <header className="access-privilege-card__header">
-                    <span>
+                    <span
+                      className={`access-privilege-card__icon access-privilege-card__icon--${getRoleIconVariant(selectedRole.name)}`}
+                    >
                       <img src={getRoleIcon(selectedRole.name)} alt="" aria-hidden="true" />
                     </span>
                     <div>
@@ -952,17 +1075,9 @@ export const AccessManagement = ({
         <div>
           <span aria-hidden="true">i</span>
           <p>
-            {hasUnsavedChanges
-              ? `${changedPrivilegeCount} perubahan belum disimpan.`
-              : savedPrivilegeSet.size > 0
-                ? `Terakhir dimuat: ${new Intl.DateTimeFormat("id-ID", {
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  }).format(new Date())}`
-                : "Belum ada privilege tersimpan untuk role ini."}
+            {selectedRole
+              ? `Terakhir diperbarui: ${formatUpdatedAt(selectedRole.updatedAt)}`
+              : "Pilih role untuk melihat tanggal terakhir diperbarui."}
           </p>
         </div>
 
@@ -1003,7 +1118,12 @@ export const AccessManagement = ({
             <h2 id="delete-role-title">Hapus role?</h2>
             <p>
               Role "{deleteTarget.label}" akan dihapus. User yang memakai role ini
-              akan dipindahkan ke role user default.
+              akan dipindahkan ke role user default. Saat ini role berdampak pada{" "}
+              {deleteTarget.activeUserCount} user aktif
+              {deleteTarget.userCount > deleteTarget.activeUserCount
+                ? ` dari ${deleteTarget.userCount} pengguna`
+                : ""}
+              .
             </p>
             <div>
               <button
