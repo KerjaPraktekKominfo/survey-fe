@@ -6,6 +6,7 @@ import { ForgotPassword } from "./pages/auth/ForgotPassword";
 import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
 import { ResetPassword } from "./pages/auth/ResetPassword";
+import { History } from "./pages/history/History";
 import { Home } from "./pages/home/Home";
 import { ChangePassword } from "./pages/profile/ChangePassword";
 import { Profile } from "./pages/profile/Profile";
@@ -33,6 +34,7 @@ type AuthPage =
   | "create-survey"
   | "edit-survey"
   | "forgot-password"
+  | "history"
   | "home"
   | "login"
   | "manage-surveys"
@@ -75,6 +77,7 @@ const PAGE_PATHS: Record<AuthPage, string> = {
   "create-survey": "/surveys/create/informasi-umum",
   "edit-survey": "/surveys/manage",
   "forgot-password": "/forgot-password",
+  history: "/history",
   home: "/",
   login: "/login",
   "manage-surveys": "/surveys/manage",
@@ -152,6 +155,7 @@ const getInitialAuthPage = (): AuthPage => {
       isEditSurveyPath(normalizedPath) ||
       isSurveyCompletePath(normalizedPath) ||
       isSurveyFillPath(normalizedPath) ||
+      normalizedPath === PAGE_PATHS.history ||
       normalizedPath === PAGE_PATHS["manage-surveys"] ||
       normalizedPath === PAGE_PATHS["user-management"] ||
       normalizedPath === PAGE_PATHS["access-management"]) &&
@@ -190,6 +194,10 @@ const getInitialAuthPage = (): AuthPage => {
 
   if (normalizedPath === PAGE_PATHS["survey-list"]) {
     return "survey-list";
+  }
+
+  if (normalizedPath === PAGE_PATHS.history) {
+    return "history";
   }
 
   if (normalizedPath === PAGE_PATHS["user-management"]) {
@@ -511,6 +519,15 @@ function App() {
     navigate("survey-list");
   }, [navigate]);
 
+  const openHistory = useCallback(() => {
+    if (isAuthenticated) {
+      navigate("history");
+      return;
+    }
+
+    goToLogin();
+  }, [goToLogin, isAuthenticated, navigate]);
+
   const openSurveyDetail = useCallback((surveyId: number | string) => {
     const parsedSurveyId = Number(surveyId);
 
@@ -710,6 +727,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyDetail={openSurveyDetail}
@@ -730,6 +748,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         accountPosition={accountProfile?.position}
@@ -752,6 +771,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -775,6 +795,7 @@ function App() {
         onBackHome={openHome}
         onCompleteSurvey={openSurveyComplete}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -797,12 +818,34 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
         onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
         surveyId={surveyCompleteId}
+      />,
+    );
+  }
+
+  if (authPage === "history") {
+    return withLogoutDialog(
+      <History
+        accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
+        accountName={accountName}
+        accountPrivileges={accountPrivileges}
+        isAuthenticated={isAuthenticated}
+        onAuthAction={handleAuthAction}
+        onBackHome={openHome}
+        onOpenAccessManagement={openAccessManagement}
+        onOpenManageSurveys={openManageSurveys}
+        onOpenProfile={openProfile}
+        onOpenSurveyFill={openSurveyFill}
+        onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
+        onUnauthorized={handleUnauthorized}
       />,
     );
   }
@@ -819,6 +862,7 @@ function App() {
         onBackHome={openHome}
         onOpenChangePassword={openChangePassword}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenSurveyList={openSurveyList}
         onOpenUserManagement={openUserManagement}
@@ -841,6 +885,7 @@ function App() {
         onCreateSurvey={openCreateSurvey}
         onEditSurvey={openEditSurvey}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenSurveyList={openSurveyList}
         onOpenProfile={openProfile}
         onOpenUserManagement={openUserManagement}
@@ -861,6 +906,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onOpenAccessManagement={openAccessManagement}
         onBackHome={openHome}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -880,6 +926,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -900,6 +947,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}
@@ -922,6 +970,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyList={openSurveyList}

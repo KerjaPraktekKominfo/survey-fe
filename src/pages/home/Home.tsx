@@ -21,6 +21,7 @@ type HomeProps = {
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
+  onOpenHistory?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyDetail?: (surveyId: number | string) => void;
@@ -232,6 +233,7 @@ export const Home = ({
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
+  onOpenHistory,
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyDetail,
@@ -317,6 +319,10 @@ export const Home = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "History") {
+      onOpenHistory?.();
     }
   };
 

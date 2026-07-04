@@ -10,6 +10,7 @@ import usersIcon from "../assets/home/home-nav-users.svg";
 import "../styles/components/sidebar.scss";
 
 type NavigationItem = {
+  authenticatedOnly?: boolean;
   icon: string;
   label: string;
   requiredPrivilege?: string;
@@ -40,7 +41,7 @@ const navigationItems: NavigationItem[] = [
     requiredPrivilege: "role:read",
   },
   { icon: analyticsIcon, label: "Analytics", requiredPrivilege: "analytics:read" },
-  { icon: historyIcon, label: "History", requiredPrivilege: "history:read" },
+  { authenticatedOnly: true, icon: historyIcon, label: "History" },
 ];
 
 export const Sidebar = ({
@@ -59,11 +60,16 @@ export const Sidebar = ({
   const authLabel = isAuthenticated ? "Logout" : "Login";
   const authIcon = isAuthenticated ? logoutIcon : loginIcon;
   const privilegeSet = new Set(privileges);
-  const visibleNavigationItems = navigationItems.filter(
-    (item) =>
+  const visibleNavigationItems = navigationItems.filter((item) => {
+    if (item.authenticatedOnly && !isAuthenticated) {
+      return false;
+    }
+
+    return (
       !item.requiredPrivilege ||
-      (isAuthenticated && privilegeSet.has(item.requiredPrivilege)),
-  );
+      (isAuthenticated && privilegeSet.has(item.requiredPrivilege))
+    );
+  });
 
   return (
     <>

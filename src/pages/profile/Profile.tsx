@@ -38,6 +38,7 @@ type ProfileProps = {
   onBackHome?: () => void;
   onOpenChangePassword?: () => void;
   onOpenAccessManagement?: () => void;
+  onOpenHistory?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenSurveyList?: () => void;
   onOpenUserManagement?: () => void;
@@ -893,6 +894,7 @@ export const Profile = ({
   onBackHome,
   onOpenChangePassword,
   onOpenAccessManagement,
+  onOpenHistory,
   onOpenManageSurveys,
   onOpenSurveyList,
   onOpenUserManagement,
@@ -1106,6 +1108,10 @@ export const Profile = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "History") {
+      onOpenHistory?.();
     }
   };
 

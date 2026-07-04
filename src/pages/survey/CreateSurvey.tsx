@@ -35,6 +35,7 @@ type CreateSurveyProps = {
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
   onBackHome?: () => void;
+  onOpenHistory?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyList?: () => void;
@@ -693,6 +694,7 @@ export const CreateSurvey = ({
   onAuthAction,
   onOpenAccessManagement,
   onBackHome,
+  onOpenHistory,
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyList,
@@ -908,6 +910,10 @@ export const CreateSurvey = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "History") {
+      onOpenHistory?.();
     }
   };
 

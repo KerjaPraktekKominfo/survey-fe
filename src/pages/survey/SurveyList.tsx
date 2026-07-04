@@ -25,6 +25,7 @@ type SurveyListProps = {
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
+  onOpenHistory?: () => void;
   onBackHome?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
@@ -409,6 +410,7 @@ export const SurveyList = ({
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
+  onOpenHistory,
   onBackHome,
   onOpenManageSurveys,
   onOpenProfile,
@@ -589,6 +591,10 @@ export const SurveyList = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "History") {
+      onOpenHistory?.();
     }
   };
 

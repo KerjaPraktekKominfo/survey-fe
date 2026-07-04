@@ -23,6 +23,7 @@ type ManageSurveysProps = {
   onBackHome?: () => void;
   onCreateSurvey?: () => void;
   onEditSurvey?: (surveyId: number) => void;
+  onOpenHistory?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyList?: () => void;
   onOpenUserManagement?: () => void;
@@ -333,6 +334,7 @@ export const ManageSurveys = ({
   onBackHome,
   onCreateSurvey,
   onEditSurvey,
+  onOpenHistory,
   onOpenProfile,
   onOpenSurveyList,
   onOpenUserManagement,
@@ -481,6 +483,10 @@ export const ManageSurveys = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "History") {
+      onOpenHistory?.();
     }
   };
 
