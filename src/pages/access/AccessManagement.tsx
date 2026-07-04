@@ -34,6 +34,7 @@ type ActionName = (typeof ACTIONS)[number];
 type RoleApiItem = {
   active_user_count?: number | string | null;
   created_at?: string | null;
+  description?: string | null;
   id: number | string;
   name?: string | null;
   user_count?: number | string | null;
@@ -60,6 +61,7 @@ type ApiCollectionResult<T> = {
 type Role = {
   activeUserCount: number;
   createdAt: string | null;
+  description: string;
   id: number;
   name: string;
   updatedAt: string | null;
@@ -163,8 +165,10 @@ const formatRoleLabel = (name: string) => {
     .join(" ");
 };
 
-const getRoleDescription = (name: string) =>
-  ROLE_DESCRIPTIONS[normalizeRoleName(name)] ?? "Role custom sistem";
+const getRoleDescription = (role: Pick<Role, "description" | "name">) =>
+  role.description.trim() ||
+  ROLE_DESCRIPTIONS[normalizeRoleName(role.name)] ||
+  "Role custom sistem";
 
 const getStableRoleIndex = (name: string) => {
   const normalizedName = normalizeRoleName(name);
@@ -203,6 +207,7 @@ const normalizeRole = (role: RoleApiItem): Role => ({
     parseNumber(role.active_user_count ?? role.user_count, 0),
   ),
   createdAt: role.created_at ?? null,
+  description: role.description?.trim() ?? "",
   id: Math.max(0, parseNumber(role.id)),
   name: normalizeRoleName(role.name),
   updatedAt: role.updated_at ?? role.created_at ?? null,
@@ -353,6 +358,7 @@ export const AccessManagement = ({
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
   const [newRoleName, setNewRoleName] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -724,6 +730,7 @@ export const AccessManagement = ({
     }
 
     const normalizedRoleName = normalizeRoleInputForApi(newRoleName);
+    const normalizedRoleDescription = newRoleDescription.trim();
 
     if (!/^[a-z0-9_]+$/.test(normalizedRoleName)) {
       setFeedbackMessage(
@@ -732,12 +739,20 @@ export const AccessManagement = ({
       return;
     }
 
+    if (!normalizedRoleDescription) {
+      setFeedbackMessage("Keterangan role harus diisi.");
+      return;
+    }
+
     setIsCreating(true);
     setFeedbackMessage("");
 
     try {
       const response = await fetch(`${API_BASE_URL}/roles`, {
-        body: JSON.stringify({ name: normalizedRoleName }),
+        body: JSON.stringify({
+          description: normalizedRoleDescription,
+          name: normalizedRoleName,
+        }),
         credentials: "include",
         headers: authHeaders("application/json"),
         method: "POST",
@@ -763,6 +778,7 @@ export const AccessManagement = ({
       const createdRole = {
         activeUserCount: 0,
         createdAt,
+        description: normalizedRoleDescription,
         id: createdRoleId,
         name: normalizedRoleName,
         updatedAt: createdAt,
@@ -775,6 +791,7 @@ export const AccessManagement = ({
         ),
       );
       setSelectedRoleId(createdRoleId);
+      setNewRoleDescription("");
       setNewRoleName("");
       setIsCreateOpen(false);
       setFeedbackMessage("Role berhasil dibuat.");
@@ -885,6 +902,15 @@ export const AccessManagement = ({
                   value={newRoleName}
                 />
               </label>
+              <label>
+                <span>Keterangan</span>
+                <input
+                  autoComplete="off"
+                  onChange={(event) => setNewRoleDescription(event.target.value)}
+                  placeholder="contoh: Mengelola data wilayah"
+                  value={newRoleDescription}
+                />
+              </label>
               <button disabled={isCreating} type="submit">
                 {isCreating ? "Membuat..." : "Buat Role"}
               </button>
@@ -907,7 +933,6 @@ export const AccessManagement = ({
                 roles.map((role) => {
                   const isActive = role.id === selectedRoleId;
                   const roleLabel = formatRoleLabel(role.name);
-                  const roleIconVariant = getRoleIconVariant(role.name);
 
                   return (
                     <div
@@ -919,18 +944,9 @@ export const AccessManagement = ({
                         onClick={() => setSelectedRoleId(role.id)}
                         type="button"
                       >
-                        <span
-                          className={`access-role-list__icon access-role-list__icon--${roleIconVariant}`}
-                        >
-                          <img
-                            src={getRoleIcon(role.name)}
-                            alt=""
-                            aria-hidden="true"
-                          />
-                        </span>
                         <span className="access-role-list__text">
                           <strong>{roleLabel}</strong>
-                          <small>{getRoleDescription(role.name)}</small>
+                          <small>{getRoleDescription(role)}</small>
                         </span>
                       </button>
 

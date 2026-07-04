@@ -105,13 +105,13 @@
   background: #ffffff;
   border: 1px solid rgba(222, 192, 187, 0.6);
   border-radius: 12px;
-  display: flex;
+  display: grid;
   gap: 12px;
+  grid-template-columns: minmax(160px, 1fr) minmax(220px, 1.4fr) auto;
   padding: 16px;
 
   label {
     display: grid;
-    flex: 1 1 auto;
     gap: 6px;
     min-width: 0;
   }
@@ -202,7 +202,7 @@
   display: grid;
   gap: 8px;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  min-height: 60px;
+  min-height: 78px;
   padding-right: 14px;
 
   &:hover {
@@ -223,8 +223,7 @@
   color: var(--access-ink);
   cursor: pointer;
   display: flex;
-  gap: 16px;
-  min-height: 58px;
+  min-height: 76px;
   min-width: 0;
   padding: 17px 0 17px 17px;
   text-align: left;
@@ -236,37 +235,8 @@
   }
 }
 
-.access-role-list__icon {
-  align-items: center;
-  background: rgba(48, 0, 0, 0.1);
-  border-radius: 999px;
-  display: inline-flex;
-  flex: 0 0 40px;
-  height: 40px;
-  justify-content: center;
-  width: 40px;
-
-  img {
-    height: 20px;
-    width: 20px;
-  }
-
-  &--maroon {
-    background: rgba(48, 0, 0, 0.1);
-  }
-
-  &--blue {
-    background: #e5eeff;
-  }
-
-  &--neutral {
-    background: #eef2f7;
-  }
-}
-
 .access-role-list__text {
   display: grid;
-  flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
 
@@ -836,7 +806,7 @@
 
   .access-management-create-form {
     align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .access-management-footer {
