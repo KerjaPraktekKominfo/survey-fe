@@ -18,6 +18,7 @@ type HistoryProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
   accountName?: string;
+  accountPosition?: string | null;
   accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
@@ -96,6 +97,12 @@ const POSITION_LABELS: Record<string, string> = {
 const STATUS_LABELS: Record<HistoryItem["responseStatus"], string> = {
   draft: "Belum Selesai",
   submitted: "Terselesaikan",
+};
+
+const ACCESS_DENIED_LABELS: Record<string, string> = {
+  asn: "Pegawai ASN",
+  non_asn: "Pegawai Non-ASN",
+  public: "Masyarakat Umum",
 };
 
 const parseNumber = (value: number | string | null | undefined, fallback = 0) => {
@@ -183,6 +190,33 @@ const getPositionBadges = (positions: string[]) => {
   }));
 };
 
+const normalizeAccountPosition = (position?: string | null) => {
+  const normalizedPosition = position?.trim().toLowerCase();
+
+  return normalizedPosition === "asn" ||
+    normalizedPosition === "non_asn" ||
+    normalizedPosition === "public"
+    ? normalizedPosition
+    : null;
+};
+
+const canUseAudienceFilter = (
+  selectedPosition: string,
+  accountPosition?: string | null,
+) => {
+  if (selectedPosition === "" || selectedPosition === "public") {
+    return true;
+  }
+
+  const normalizedAccountPosition = normalizeAccountPosition(accountPosition);
+
+  if (!normalizedAccountPosition) {
+    return false;
+  }
+
+  return normalizedAccountPosition === selectedPosition;
+};
+
 const getVisiblePageNumbers = (currentPage: number, totalPages: number) => {
   const pages = new Set([1, currentPage]);
 
@@ -262,6 +296,7 @@ export const History = ({
   accountDescription,
   accountAvatarSrc,
   accountName,
+  accountPosition,
   accountPrivileges,
   isAuthenticated,
   onAuthAction,
@@ -418,6 +453,18 @@ export const History = ({
     setIsLimitOpen(false);
   };
 
+  const handleAudienceChange = (nextPosition: string) => {
+    if (!canUseAudienceFilter(nextPosition, accountPosition)) {
+      setFeedback(
+        `Akun ${ACCESS_DENIED_LABELS[normalizeAccountPosition(accountPosition) ?? "public"]} tidak dapat melihat filter ${POSITION_LABELS[nextPosition] ?? nextPosition}.`,
+      );
+      return;
+    }
+
+    setPositionFilter(nextPosition);
+    setPage(1);
+  };
+
   const currentPage = meta.page;
   const totalPages = meta.totalPages;
   const visiblePageNumbers = getVisiblePageNumbers(currentPage, totalPages);
@@ -495,10 +542,7 @@ export const History = ({
                 <span>Audiens</span>
                 <select
                   aria-label="Filter audiens"
-                  onChange={(event) => {
-                    setPositionFilter(event.target.value);
-                    setPage(1);
-                  }}
+                  onChange={(event) => handleAudienceChange(event.target.value)}
                   value={positionFilter}
                 >
                   <option value="">Audiens</option>

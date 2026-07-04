@@ -4,7 +4,6 @@ import { Topbar } from "../../components/topbar";
 import adminAvatar from "../../assets/home/home-admin-avatar.png";
 import checkIcon from "../../assets/survey/complete/complete-check.svg";
 import homeIcon from "../../assets/survey/complete/complete-home.svg";
-import shareIcon from "../../assets/survey/complete/complete-share.svg";
 import { API_BASE_URL } from "../../lib/api";
 import { authHeaders } from "../../lib/auth";
 import "../../styles/survey/SurveyComplete.scss";
@@ -254,14 +253,6 @@ export const SurveyComplete = ({
               </button>
             </div>
           </section>
-
-          <aside className="survey-complete-share">
-            <img src={shareIcon} alt="" aria-hidden="true" />
-            <div>
-              <h2>Bagikan Survey</h2>
-              <p>Ajak warga lain untuk berpartisipasi.</p>
-            </div>
-          </aside>
         </div>
       </section>
     </main>

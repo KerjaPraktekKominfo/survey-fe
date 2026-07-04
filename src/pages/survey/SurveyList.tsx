@@ -314,7 +314,7 @@ const getOpeningDistance = (dateValue?: string | null) => {
   );
 
   if (distanceInMinutes <= 0) {
-    return "sebentar lagi";
+    return "sudah melewati waktu pembukaan";
   }
 
   if (distanceInMinutes < 60) {

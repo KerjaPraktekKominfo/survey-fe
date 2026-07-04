@@ -1359,7 +1359,7 @@ export const SurveyFill = ({
                     <img src={fillAutosaveIcon} alt="" aria-hidden="true" />
                     {isReadOnly
                       ? "Jawaban sudah terkirim dan hanya bisa dilihat."
-                      : "Jawaban tersimpan otomatis saat menekan Selanjutnya."}
+                      : "Pastikan jawaban sudah benar. Jawaban tidak dapat diubah setelah survey dikirim."}
                   </p>
 
                   {isReadOnly ? (

@@ -835,6 +835,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPosition={accountProfile?.position}
         accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
