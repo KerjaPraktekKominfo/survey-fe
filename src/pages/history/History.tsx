@@ -81,6 +81,14 @@ type PaginationMeta = {
   totalPages: number;
 };
 
+type SortDirection = "asc" | "desc";
+type SortKey = "date" | "positions" | "status" | "title";
+
+type SortConfig = {
+  direction: SortDirection;
+  key: SortKey;
+};
+
 const initialMeta: PaginationMeta = {
   page: 1,
   perPage: 5,
@@ -237,18 +245,73 @@ const getVisiblePageNumbers = (currentPage: number, totalPages: number) => {
     .sort((left, right) => left - right);
 };
 
+const getSortButtonLabel = (
+  label: string,
+  sortConfig: SortConfig,
+  sortKey: SortKey,
+) => {
+  if (sortConfig.key !== sortKey) {
+    return `Urutkan ${label} naik`;
+  }
+
+  return sortConfig.direction === "asc"
+    ? `Urutkan ${label} turun`
+    : `Urutkan ${label} naik`;
+};
+
+const SortableHeader = ({
+  children,
+  onSort,
+  sortConfig,
+  sortKey,
+}: {
+  children: string;
+  onSort: (key: SortKey) => void;
+  sortConfig: SortConfig;
+  sortKey: SortKey;
+}) => {
+  const isActive = sortConfig.key === sortKey;
+  const direction = isActive ? sortConfig.direction : null;
+
+  return (
+    <button
+      aria-label={getSortButtonLabel(children, sortConfig, sortKey)}
+      aria-sort={
+        isActive
+          ? direction === "asc"
+            ? "ascending"
+            : "descending"
+          : undefined
+      }
+      className="history-sort"
+      onClick={() => onSort(sortKey)}
+      type="button"
+    >
+      <span>{children}</span>
+      <span
+        aria-hidden="true"
+        className={`history-sort__icons ${direction ? `is-${direction}` : ""}`}
+      >
+        <span className="history-sort__icon history-sort__icon--up" />
+        <span className="history-sort__icon history-sort__icon--down" />
+      </span>
+    </button>
+  );
+};
+
 const buildEndpoint = (
   search: string,
   page: number,
   perPage: number,
   status: string,
   position: string,
-  sort: string,
+  sortConfig: SortConfig,
 ) => {
   const params = new URLSearchParams({
     page: String(page),
     per_page: String(perPage),
-    sort,
+    sort_by: sortConfig.key,
+    sort_direction: sortConfig.direction,
   });
 
   if (search) {
@@ -315,7 +378,10 @@ export const History = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [sortFilter, setSortFilter] = useState("newest");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    direction: "desc",
+    key: "date",
+  });
   const [perPage, setPerPage] = useState<(typeof PER_PAGE_OPTIONS)[number]>(5);
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<PaginationMeta>(initialMeta);
@@ -349,7 +415,7 @@ export const History = ({
             perPage,
             statusFilter,
             positionFilter,
-            sortFilter,
+            sortConfig,
           ),
           {
             credentials: "include",
@@ -409,7 +475,7 @@ export const History = ({
     perPage,
     positionFilter,
     searchQuery,
-    sortFilter,
+    sortConfig,
     statusFilter,
   ]);
 
@@ -462,6 +528,15 @@ export const History = ({
     }
 
     setPositionFilter(nextPosition);
+    setPage(1);
+  };
+
+  const handleSortChange = (key: SortKey) => {
+    setSortConfig((current) => ({
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+      key,
+    }));
     setPage(1);
   };
 
@@ -568,21 +643,6 @@ export const History = ({
                 </select>
               </label>
 
-              <label>
-                <span>Urutan</span>
-                <select
-                  aria-label="Urutkan riwayat"
-                  onChange={(event) => {
-                    setSortFilter(event.target.value);
-                    setPage(1);
-                  }}
-                  value={sortFilter}
-                >
-                  <option value="newest">Terbaru</option>
-                  <option value="oldest">Terlama</option>
-                </select>
-              </label>
-
               <div className="history-limit">
                 <button
                   aria-expanded={isLimitOpen}
@@ -618,11 +678,45 @@ export const History = ({
             <table className="history-table">
               <thead>
                 <tr>
-                  <th>Judul Survey</th>
-                  <th>Audiens</th>
-                  <th>Tanggal Pengisian</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
+                  <th>
+                    <SortableHeader
+                      onSort={handleSortChange}
+                      sortConfig={sortConfig}
+                      sortKey="title"
+                    >
+                      Judul Survey
+                    </SortableHeader>
+                  </th>
+                  <th>
+                    <SortableHeader
+                      onSort={handleSortChange}
+                      sortConfig={sortConfig}
+                      sortKey="positions"
+                    >
+                      Audiens
+                    </SortableHeader>
+                  </th>
+                  <th>
+                    <SortableHeader
+                      onSort={handleSortChange}
+                      sortConfig={sortConfig}
+                      sortKey="date"
+                    >
+                      Tanggal Pengisian
+                    </SortableHeader>
+                  </th>
+                  <th>
+                    <SortableHeader
+                      onSort={handleSortChange}
+                      sortConfig={sortConfig}
+                      sortKey="status"
+                    >
+                      Status
+                    </SortableHeader>
+                  </th>
+                  <th>
+                    <span className="history-table__static-head">Aksi</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
