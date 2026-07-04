@@ -467,10 +467,9 @@
       outline: none;
     }
 
-    &:disabled {
+    &.is-disabled {
       background: #e6d8d6;
       color: #8e706c;
-      cursor: not-allowed;
     }
   }
 }

@@ -260,6 +260,29 @@ const isQuestionLinkedToOption = (
   question.parentOptionLocalId === option.localId ||
   (typeof option.id === "number" && question.parentOptionId === option.id);
 
+const getParentOption = (
+  questions: SurveyQuestion[],
+  question: SurveyQuestion,
+) => {
+  if (!isConditionalQuestion(question)) {
+    return null;
+  }
+
+  for (const candidate of questions) {
+    const option = candidate.options.find(
+      (item) =>
+        item.localId === question.parentOptionLocalId ||
+        (typeof item.id === "number" && item.id === question.parentOptionId),
+    );
+
+    if (option) {
+      return option;
+    }
+  }
+
+  return null;
+};
+
 const getOptionOwnerQuestion = (
   questions: SurveyQuestion[],
   option: QuestionOption,
@@ -406,6 +429,22 @@ const removeOverDepthConditionalQuestions = (questions: SurveyQuestion[]) =>
       questions,
     );
 
+const removeInvalidConditionalQuestions = (questions: SurveyQuestion[]) =>
+  questions
+    .filter((question) => {
+      if (!isConditionalQuestion(question)) {
+        return false;
+      }
+
+      const parentOption = getParentOption(questions, question);
+      return parentOption === null || parentOption.text.trim() === "";
+    })
+    .reduce(
+      (nextQuestions, invalidQuestion) =>
+        removeQuestionsWithDescendants(nextQuestions, invalidQuestion),
+      questions,
+    );
+
 const toApiDateTime = (value: string) => {
   if (!value) {
     return null;
@@ -430,7 +469,7 @@ const toNumberOrNull = (value: string) => {
 
 const parseOptionalNumber = (value: number | string | null | undefined) => {
   const parsedValue = Number(value);
-  return Number.isFinite(parsedValue) ? parsedValue : null;
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : null;
 };
 
 const getDraftStorageKey = (mode: "create" | "edit", surveyId?: number | null) =>
@@ -561,6 +600,10 @@ const requestFormData = async <TData,>(
 
   return (await response.json()) as ApiResult<TData>;
 };
+
+const isPublishedSurveyConflict = (error: unknown) =>
+  error instanceof Error &&
+  /setelah (survey )?dipublikasikan|tidak dapat diubah/i.test(error.message);
 
 const buildSurveyPayload = (surveyInfo: SurveyInfo, status = "draft") => ({
   closes_at: toApiDateTime(surveyInfo.closesAt),
@@ -1214,17 +1257,47 @@ export const CreateSurvey = ({
         return nextSurveyId;
       }
 
-      await requestJson(
-        `/surveys/${surveyId}`,
-        {
-          body: JSON.stringify(payload),
-          method: "PUT",
-        },
-        "Draft survey belum bisa disimpan.",
-      );
-      await uploadThumbnail(surveyId);
+      try {
+        await requestJson(
+          `/surveys/${surveyId}`,
+          {
+            body: JSON.stringify(payload),
+            method: "PUT",
+          },
+          "Draft survey belum bisa disimpan.",
+        );
+        await uploadThumbnail(surveyId);
 
-      return surveyId;
+        return surveyId;
+      } catch (error) {
+        if (isEditingSurvey || !isPublishedSurveyConflict(error)) {
+          throw error;
+        }
+
+        localStorage.removeItem(draftStorageKey);
+        setSurveyId(null);
+
+        const result = await requestJson<IdResult>(
+          "/surveys",
+          {
+            body: JSON.stringify(payload),
+            method: "POST",
+          },
+          "Draft survey baru belum bisa dibuat.",
+        );
+        const nextSurveyId = Number(result.data?.id);
+
+        if (!Number.isFinite(nextSurveyId)) {
+          throw new Error("ID draft survey tidak valid dari server.", {
+            cause: error,
+          });
+        }
+
+        setSurveyId(nextSurveyId);
+        await uploadThumbnail(nextSurveyId);
+
+        return nextSurveyId;
+      }
     } finally {
       setIsSaving(false);
     }
@@ -1486,15 +1559,19 @@ export const CreateSurvey = ({
       throw new Error("Pertanyaan pilihan butuh minimal dua opsi.");
     }
 
-    const parentOptionId = question.parentOptionLocalId
+    const resolvedParentOptionId = question.parentOptionLocalId
       ? (optionIdsByLocalId.get(question.parentOptionLocalId) ??
         question.parentOptionId ??
         null)
       : (question.parentOptionId ?? null);
+    const parentOptionId =
+      typeof resolvedParentOptionId === "number" && resolvedParentOptionId > 0
+        ? resolvedParentOptionId
+        : null;
 
-    if (question.parentOptionLocalId && !parentOptionId) {
+    if (isConditionalQuestion(question) && !parentOptionId) {
       throw new Error(
-        "Opsi induk untuk pertanyaan kondisional belum tersimpan.",
+        "Pertanyaan kondisional perlu opsi induk yang valid.",
       );
     }
 
@@ -1596,10 +1673,11 @@ export const CreateSurvey = ({
   };
 
   const persistAllQuestions = async (targetSurveyId: number) => {
+    const persistableQuestions = removeInvalidConditionalQuestions(questions);
     const savedQuestions: SurveyQuestion[] = [];
     const optionIdsByLocalId: OptionIdsByLocalId = new Map();
 
-    for (const question of orderQuestionsForPersistence(questions)) {
+    for (const question of orderQuestionsForPersistence(persistableQuestions)) {
       const savedQuestion = await persistQuestion(
         targetSurveyId,
         question,
@@ -1619,7 +1697,10 @@ export const CreateSurvey = ({
   };
 
   const persistDraftQuestions = async (targetSurveyId: number) => {
-    const draftQuestions = questions.filter((question) => question.text.trim());
+    const persistableQuestions = removeInvalidConditionalQuestions(questions);
+    const draftQuestions = persistableQuestions.filter((question) =>
+      question.text.trim(),
+    );
 
     if (draftQuestions.length === 0) {
       return;
@@ -1628,7 +1709,7 @@ export const CreateSurvey = ({
     const savedQuestions: SurveyQuestion[] = [];
     const optionIdsByLocalId: OptionIdsByLocalId = new Map();
 
-    questions.forEach((question) => {
+    persistableQuestions.forEach((question) => {
       question.options.forEach((option) => {
         if (option.id) {
           optionIdsByLocalId.set(option.localId, option.id);
@@ -1653,7 +1734,7 @@ export const CreateSurvey = ({
     }
 
     setQuestions((current) =>
-      current.map(
+      removeInvalidConditionalQuestions(current).map(
         (question) =>
           savedQuestions.find((saved) => saved.localId === question.localId) ??
           question,
@@ -1949,6 +2030,7 @@ export const CreateSurvey = ({
           <label className="create-survey-field">
             <span>Tanggal Selesai</span>
             <input
+              min={surveyInfo.opensAt || undefined}
               onChange={(event) =>
                 updateSurveyInfo("closesAt", event.target.value)
               }

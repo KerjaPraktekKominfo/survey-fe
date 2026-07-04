@@ -261,7 +261,7 @@ const formatDate = (dateValue?: string | null) => {
     return null;
   }
 
-  const date = new Date(dateValue);
+  const date = new Date(dateValue.replace(" ", "T"));
 
   if (Number.isNaN(date.getTime())) {
     return null;
@@ -276,6 +276,61 @@ const formatDate = (dateValue?: string | null) => {
     .replace(/\./g, "");
 };
 
+const formatDateTime = (dateValue?: string | null) => {
+  if (!dateValue) {
+    return null;
+  }
+
+  const date = new Date(dateValue.replace(" ", "T"));
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "long",
+    year: "numeric",
+  })
+    .format(date)
+    .replace(/\./g, ":");
+};
+
+const getOpeningDistance = (dateValue?: string | null) => {
+  if (!dateValue) {
+    return null;
+  }
+
+  const openingDate = new Date(dateValue.replace(" ", "T"));
+
+  if (Number.isNaN(openingDate.getTime())) {
+    return null;
+  }
+
+  const distanceInMinutes = Math.ceil(
+    (openingDate.getTime() - Date.now()) / 60000,
+  );
+
+  if (distanceInMinutes <= 0) {
+    return "sebentar lagi";
+  }
+
+  if (distanceInMinutes < 60) {
+    return `${distanceInMinutes} menit lagi`;
+  }
+
+  const distanceInHours = Math.ceil(distanceInMinutes / 60);
+
+  if (distanceInHours < 24) {
+    return `${distanceInHours} jam lagi`;
+  }
+
+  const distanceInDays = Math.ceil(distanceInHours / 24);
+  return `${distanceInDays} hari lagi`;
+};
+
 const getPeriodLabel = (
   opensAt?: string | null,
   closesAt?: string | null,
@@ -287,6 +342,25 @@ const getPeriodLabel = (
 };
 
 const getStatusLabel = (status: string) => STATUS_LABELS[status] ?? status;
+
+const getUnavailableSurveyMessage = (survey: SurveyCard) => {
+  if (survey.status === "upcoming") {
+    const openingDate = formatDateTime(survey.opensAt);
+    const openingDistance = getOpeningDistance(survey.opensAt);
+
+    if (openingDate && openingDistance) {
+      return `Survey dibuka pada ${openingDate} (${openingDistance}).`;
+    }
+
+    if (openingDate) {
+      return `Survey dibuka pada ${openingDate}.`;
+    }
+
+    return "Survey belum dibuka. Silakan cek kembali nanti.";
+  }
+
+  return "Survey ini belum dapat diisi.";
+};
 
 const isPublicSurveyStatus = (status: string) =>
   status === "open" || status === "upcoming";
@@ -633,7 +707,7 @@ export const SurveyList = ({
     }
 
     if (survey.status !== "open") {
-      setFeedbackMessage("Survey ini belum dapat diisi.");
+      setFeedbackMessage(getUnavailableSurveyMessage(survey));
       return;
     }
 
@@ -807,7 +881,8 @@ export const SurveyList = ({
                         Estimasi {survey.estimatedTime ?? 8} menit
                       </span>
                       <button
-                        disabled={survey.status !== "open"}
+                        aria-disabled={survey.status !== "open"}
+                        className={survey.status !== "open" ? "is-disabled" : ""}
                         onClick={() => handleOpenSurveyDetail(survey)}
                         type="button"
                       >
