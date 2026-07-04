@@ -18,6 +18,7 @@ type AccessManagementProps = {
   accountAvatarSrc?: string;
   accountDescription?: string;
   accountName?: string;
+  accountPrivileges?: string[];
   accountRoleId?: number | string | null;
   isAuthenticated: boolean;
   onAuthAction?: () => void;
@@ -333,6 +334,7 @@ export const AccessManagement = ({
   accountAvatarSrc,
   accountDescription,
   accountName,
+  accountPrivileges,
   accountRoleId,
   isAuthenticated,
   onAuthAction,
@@ -866,6 +868,7 @@ export const AccessManagement = ({
         onAuthAction={handleAuthAction}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="access-management-shell">

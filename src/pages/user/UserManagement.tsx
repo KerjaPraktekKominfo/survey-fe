@@ -22,6 +22,7 @@ type UserManagementProps = {
   accountDescription?: string;
   accountId?: number | string | null;
   accountName?: string;
+  accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
@@ -316,6 +317,7 @@ export const UserManagement = ({
   accountDescription,
   accountId,
   accountName,
+  accountPrivileges,
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
@@ -671,6 +673,7 @@ export const UserManagement = ({
         onAuthAction={handleAuthAction}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="user-management-shell">

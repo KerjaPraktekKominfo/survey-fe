@@ -565,6 +565,12 @@
   }
 }
 
+.manage-survey-actions__empty {
+  color: var(--manage-soft-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
 .manage-survey-trash {
   height: 18px;
   width: 16px;

@@ -20,6 +20,7 @@ type SurveyDetailProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
   accountName?: string;
+  accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
@@ -198,6 +199,7 @@ export const SurveyDetail = ({
   accountDescription,
   accountAvatarSrc,
   accountName,
+  accountPrivileges,
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
@@ -401,6 +403,7 @@ export const SurveyDetail = ({
         onAuthAction={handleAuthAction}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="survey-detail-shell">

@@ -32,6 +32,7 @@ type ProfileProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
   accountName?: string;
+  accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onBackHome?: () => void;
@@ -46,6 +47,7 @@ type ProfileProps = {
 
 type AccountProfile = ProfilePhotoSource & {
   full_name?: string | null;
+  privileges?: string[];
   username?: string | null;
 };
 
@@ -62,6 +64,7 @@ type ProfileData = ProfilePhotoSource & {
   phone_verified?: boolean;
   phone_verified_at?: string | null;
   position: "asn" | "non_asn" | "public" | string;
+  privileges?: string[];
   role: string;
   role_id: number;
   username: string;
@@ -884,6 +887,7 @@ export const Profile = ({
   accountDescription,
   accountAvatarSrc,
   accountName,
+  accountPrivileges,
   isAuthenticated,
   onAuthAction,
   onBackHome,
@@ -1571,6 +1575,7 @@ export const Profile = ({
         onAuthAction={handleAuthAction}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="profile-shell">

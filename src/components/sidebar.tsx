@@ -1,4 +1,3 @@
-import helpIcon from "../assets/home/home-help.svg";
 import loginIcon from "../assets/home/home-step-login.svg";
 import logoutIcon from "../assets/home/home-logout.svg";
 import accessIcon from "../assets/home/home-nav-access.svg";
@@ -13,6 +12,7 @@ import "../styles/components/sidebar.scss";
 type NavigationItem = {
   icon: string;
   label: string;
+  requiredPrivilege?: string;
 };
 
 type SidebarProps = {
@@ -26,16 +26,21 @@ type SidebarProps = {
   onAuthAction: () => void;
   onClose: () => void;
   onNavigate?: (label: string) => void;
+  privileges?: string[];
 };
 
 const navigationItems: NavigationItem[] = [
   { icon: dashboardIcon, label: "Dashboard" },
   { icon: listIcon, label: "Daftar Survey" },
-  { icon: manageIcon, label: "Kelola Survey" },
-  { icon: usersIcon, label: "User Management" },
-  { icon: accessIcon, label: "Pengaturan Hak Akses" },
-  { icon: analyticsIcon, label: "Analytics" },
-  { icon: historyIcon, label: "History" },
+  { icon: manageIcon, label: "Kelola Survey", requiredPrivilege: "survey:read" },
+  { icon: usersIcon, label: "User Management", requiredPrivilege: "user:read" },
+  {
+    icon: accessIcon,
+    label: "Pengaturan Hak Akses",
+    requiredPrivilege: "role:read",
+  },
+  { icon: analyticsIcon, label: "Analytics", requiredPrivilege: "analytics:read" },
+  { icon: historyIcon, label: "History", requiredPrivilege: "history:read" },
 ];
 
 export const Sidebar = ({
@@ -49,9 +54,16 @@ export const Sidebar = ({
   onAuthAction,
   onClose,
   onNavigate,
+  privileges = [],
 }: SidebarProps) => {
   const authLabel = isAuthenticated ? "Logout" : "Login";
   const authIcon = isAuthenticated ? logoutIcon : loginIcon;
+  const privilegeSet = new Set(privileges);
+  const visibleNavigationItems = navigationItems.filter(
+    (item) =>
+      !item.requiredPrivilege ||
+      (isAuthenticated && privilegeSet.has(item.requiredPrivilege)),
+  );
 
   return (
     <>
@@ -78,7 +90,7 @@ export const Sidebar = ({
           </div>
 
           <nav className="app-navigation" aria-label="Menu dashboard">
-            {navigationItems.map((item) => (
+            {visibleNavigationItems.map((item) => (
               <button
                 className={item.label === activeItem ? "is-active" : ""}
                 key={item.label}
@@ -93,10 +105,6 @@ export const Sidebar = ({
         </div>
 
         <div className="app-sidebar__footer">
-          <button type="button">
-            <img src={helpIcon} alt="" aria-hidden="true" />
-            <span>Help Center</span>
-          </button>
           <button onClick={onAuthAction} type="button">
             <img src={authIcon} alt="" aria-hidden="true" />
             <span>{authLabel}</span>

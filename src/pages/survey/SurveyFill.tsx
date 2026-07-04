@@ -6,7 +6,6 @@ import breadcrumbChevronIcon from "../../assets/profile/profile-breadcrumb-chevr
 import arrowLeftIcon from "../../assets/survey/create/create-arrow-left.svg";
 import arrowRightIcon from "../../assets/survey/create/create-arrow-right.svg";
 import fillAutosaveIcon from "../../assets/survey/fill/fill-autosave.svg";
-import fillSaveDraftIcon from "../../assets/survey/fill/fill-save-draft.svg";
 import lockIcon from "../../assets/survey/list/list-lock-icon.svg";
 import { API_BASE_URL } from "../../lib/api";
 import { authHeaders } from "../../lib/auth";
@@ -16,6 +15,7 @@ type SurveyFillProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
   accountName?: string;
+  accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
@@ -67,6 +67,20 @@ type SurveyFormApi = {
   survey_id?: number | string;
 };
 
+type SurveyResponseAnswerApi = {
+  answer_text?: string | null;
+  file_path?: string | null;
+  option_id?: number | string | null;
+  question_id?: number | string | null;
+};
+
+type SurveyResponseApi = {
+  answers?: SurveyResponseAnswerApi[];
+  current_page?: number | string | null;
+  status?: string | null;
+  submitted_at?: string | null;
+};
+
 type SurveyOption = {
   id: number;
   order: number;
@@ -91,6 +105,7 @@ type SurveyPage = {
 };
 
 type AnswerValue = number | number[] | string | null;
+type ResponseStatus = "draft" | "submitted" | null;
 
 type DraftState = {
   answers?: Record<string, AnswerValue>;
@@ -339,10 +354,101 @@ const buildAnswerPayload = (
       return payload;
     }, []);
 
+const normalizeResponseStatus = (status?: string | null): ResponseStatus => {
+  const normalizedStatus = status?.trim().toLowerCase();
+
+  return normalizedStatus === "draft" || normalizedStatus === "submitted"
+    ? normalizedStatus
+    : null;
+};
+
+const normalizePageIndex = (value: unknown, totalPages: number) => {
+  const parsedValue = Number(value);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    return 0;
+  }
+
+  return Math.min(totalPages - 1, Math.floor(parsedValue));
+};
+
+const buildAnswerStateFromResponse = (
+  pages: SurveyPage[],
+  responseAnswers: SurveyResponseAnswerApi[] = [],
+) => {
+  const questionsById = new Map<number, SurveyQuestion>();
+
+  pages.forEach((page) => {
+    page.questions.forEach((question) => {
+      questionsById.set(question.id, question);
+    });
+  });
+
+  const groupedAnswers = new Map<number, SurveyResponseAnswerApi[]>();
+
+  responseAnswers.forEach((answer) => {
+    const questionId = parsePositiveNumber(answer.question_id);
+
+    if (!questionId || !questionsById.has(questionId)) {
+      return;
+    }
+
+    const answersForQuestion = groupedAnswers.get(questionId) ?? [];
+    answersForQuestion.push(answer);
+    groupedAnswers.set(questionId, answersForQuestion);
+  });
+
+  const nextAnswers: Record<string, AnswerValue> = {};
+
+  groupedAnswers.forEach((answersForQuestion, questionId) => {
+    const question = questionsById.get(questionId);
+
+    if (!question) {
+      return;
+    }
+
+    if (question.type === "free_text") {
+      const answerText = answersForQuestion.find(
+        (answer) => typeof answer.answer_text === "string",
+      )?.answer_text;
+
+      nextAnswers[String(questionId)] = answerText?.trim() ?? "";
+      return;
+    }
+
+    if (question.type === "checkbox") {
+      const availableOptionIds = new Set(question.options.map((option) => option.id));
+      const optionIds = answersForQuestion
+        .map((answer) => parsePositiveNumber(answer.option_id))
+        .filter(
+          (optionId): optionId is number =>
+            optionId !== null && availableOptionIds.has(optionId),
+        );
+
+      nextAnswers[String(questionId)] = Array.from(new Set(optionIds));
+      return;
+    }
+
+    const availableOptionIds = new Set(question.options.map((option) => option.id));
+    const optionId =
+      answersForQuestion
+        .map((answer) => parsePositiveNumber(answer.option_id))
+        .find(
+          (currentOptionId): currentOptionId is number =>
+            currentOptionId !== null && availableOptionIds.has(currentOptionId),
+        ) ?? null;
+
+    nextAnswers[String(questionId)] = optionId;
+  });
+
+  return nextAnswers;
+};
+
 export const SurveyFill = ({
   accountDescription,
   accountAvatarSrc,
   accountName,
+  accountPrivileges,
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
@@ -360,6 +466,7 @@ export const SurveyFill = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(() => Boolean(surveyId));
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
@@ -367,9 +474,11 @@ export const SurveyFill = ({
     Record<number, DropdownPlacement>
   >({});
   const [pages, setPages] = useState<SurveyPage[]>([]);
+  const [responseStatus, setResponseStatus] = useState<ResponseStatus>(null);
   const [surveyTitle, setSurveyTitle] = useState(DEFAULT_TITLE);
   const dropdownButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
+  const isReadOnly = responseStatus === "submitted";
 
   const draftKey = getAnswerDraftKey(surveyId);
 
@@ -385,7 +494,7 @@ export const SurveyFill = ({
       setFeedback("");
 
       try {
-        const [formResponse, detailResponse] = await Promise.all([
+        const [formResponse, detailResponse, responseResponse] = await Promise.all([
           fetch(`${API_BASE_URL}/surveys/${surveyId}/form`, {
             credentials: "include",
             headers: authHeaders(),
@@ -398,9 +507,15 @@ export const SurveyFill = ({
             method: "GET",
             signal: controller.signal,
           }).catch(() => null),
+          fetch(`${API_BASE_URL}/surveys/${surveyId}/responses`, {
+            credentials: "include",
+            headers: authHeaders(),
+            method: "GET",
+            signal: controller.signal,
+          }),
         ]);
 
-        if (formResponse.status === 401) {
+        if (formResponse.status === 401 || responseResponse.status === 401) {
           onUnauthorized?.();
           return;
         }
@@ -422,26 +537,55 @@ export const SurveyFill = ({
           setSurveyTitle(detailResult.data?.title?.trim() || DEFAULT_TITLE);
         }
 
-        const storedDraft = localStorage.getItem(getAnswerDraftKey(surveyId));
+        let serverResponseStatus: ResponseStatus = null;
+        let serverResponsePage = 0;
+        let serverAnswers: Record<string, AnswerValue> = {};
+
+        if (responseResponse.ok) {
+          const responseResult =
+            (await responseResponse.json()) as ApiResult<SurveyResponseApi>;
+          const responseData = responseResult.data;
+
+          serverResponseStatus = normalizeResponseStatus(responseData?.status);
+          serverResponsePage = normalizePageIndex(
+            responseData?.current_page,
+            nextPages.length,
+          );
+          serverAnswers = buildAnswerStateFromResponse(
+            nextPages,
+            responseData?.answers ?? [],
+          );
+        } else {
+          const result =
+            (await responseResponse.json().catch(() => ({}))) as ApiResult;
+          throw new Error(result.message ?? "Status pengisian survey belum bisa dimuat.");
+        }
+
+        const hasServerResponse = serverResponseStatus !== null;
+        const storedDraft = hasServerResponse
+          ? null
+          : localStorage.getItem(getAnswerDraftKey(surveyId));
         const draft = storedDraft ? (JSON.parse(storedDraft) as DraftState) : null;
-        const draftPage = draft?.page ?? 0;
-        const draftAnswers = draft?.answers ?? {};
-        const draftVisibleQuestionIds = getVisibleQuestionIds(
-          nextPages,
-          draftAnswers,
-        );
+        const nextAnswers = hasServerResponse ? serverAnswers : draft?.answers ?? {};
+        const nextPageIndex = hasServerResponse
+          ? serverResponsePage
+          : draft?.page ?? 0;
+        const draftVisibleQuestionIds = getVisibleQuestionIds(nextPages, nextAnswers);
         const draftCompletedPageCount = getCompletedPageCount(
           getPageCompletionStatuses(
             nextPages,
-            draftAnswers,
+            nextAnswers,
             draftVisibleQuestionIds,
           ),
         );
 
-        setAnswers(draftAnswers);
+        setAnswers(nextAnswers);
+        setResponseStatus(serverResponseStatus);
         setCurrentPageIndex(
-          draftPage >= 0 && draftPage < nextPages.length
-            ? Math.min(draftPage, draftCompletedPageCount)
+          serverResponseStatus === "submitted"
+            ? 0
+            : nextPageIndex >= 0 && nextPageIndex < nextPages.length
+              ? Math.min(nextPageIndex, draftCompletedPageCount)
             : 0,
         );
         setPages(nextPages);
@@ -466,7 +610,7 @@ export const SurveyFill = ({
   }, [onUnauthorized, surveyId]);
 
   useEffect(() => {
-    if (!draftKey || pages.length === 0) {
+    if (!draftKey || pages.length === 0 || responseStatus !== null) {
       return;
     }
 
@@ -478,7 +622,7 @@ export const SurveyFill = ({
     }, 300);
 
     return () => window.clearTimeout(timerId);
-  }, [answers, currentPageIndex, draftKey, pages.length]);
+  }, [answers, currentPageIndex, draftKey, pages.length, responseStatus]);
 
   useEffect(() => {
     if (!feedback) {
@@ -589,9 +733,6 @@ export const SurveyFill = ({
   );
   const totalPages = pages.length || 1;
   const progressPercent = Math.round((completedPageCount / totalPages) * 100);
-  const currentStepLabel = currentPage
-    ? `Langkah ${currentPageIndex + 1} dari ${totalPages}: ${currentPage.section}`
-    : "Memuat survey";
   const unlockedPageIndexes = useMemo(() => {
     const nextUnlockedIndexes = new Set<number>();
 
@@ -637,6 +778,10 @@ export const SurveyFill = ({
   };
 
   const updateAnswer = (questionId: number, value: AnswerValue) => {
+    if (isReadOnly) {
+      return;
+    }
+
     setAnswers((current) => ({ ...current, [questionId]: value }));
     setErrors((current) => {
       const nextErrors = { ...current };
@@ -675,19 +820,55 @@ export const SurveyFill = ({
     }
   };
 
-  const handleSaveDraft = () => {
-    if (!draftKey) {
-      return;
+  const saveDraft = async (targetPageIndex: number) => {
+    if (!surveyId || isReadOnly) {
+      return true;
     }
 
-    localStorage.setItem(
-      draftKey,
-      JSON.stringify({ answers, page: currentPageIndex }),
-    );
-    setFeedback("Draft jawaban berhasil disimpan di perangkat ini.");
+    setIsSavingDraft(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/surveys/${surveyId}/responses`, {
+        body: JSON.stringify({
+          answers: buildAnswerPayload(pages, answers, visibleQuestionIds),
+          page: targetPageIndex,
+        }),
+        credentials: "include",
+        headers: authHeaders("application/json"),
+        method: "PUT",
+      });
+
+      if (response.status === 401) {
+        onUnauthorized?.();
+        return false;
+      }
+
+      if (!response.ok) {
+        const result = (await response.json().catch(() => ({}))) as ApiResult;
+        throw new Error(result.message ?? "Draft jawaban belum bisa disimpan.");
+      }
+
+      if (draftKey) {
+        localStorage.removeItem(draftKey);
+      }
+
+      setResponseStatus("draft");
+      return true;
+    } catch (error) {
+      setFeedback(
+        error instanceof Error ? error.message : "Draft jawaban belum bisa disimpan.",
+      );
+      return false;
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   const toggleDropdown = (questionId: number) => {
+    if (isReadOnly) {
+      return;
+    }
+
     setOpenDropdownId((current) => {
       if (current === questionId) {
         return null;
@@ -702,7 +883,7 @@ export const SurveyFill = ({
     setCurrentPageIndex((current) => Math.max(0, current - 1));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const nextErrors = validatePages([currentPageIndex]);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -711,16 +892,28 @@ export const SurveyFill = ({
       return;
     }
 
-    setCurrentPageIndex((current) => Math.min(pages.length - 1, current + 1));
+    const nextPageIndex = Math.min(pages.length - 1, currentPageIndex + 1);
+    const isDraftSaved = await saveDraft(nextPageIndex);
+
+    if (isDraftSaved) {
+      setCurrentPageIndex(nextPageIndex);
+    }
   };
 
-  const handleProgressClick = (targetPageIndex: number) => {
+  const handleProgressClick = async (targetPageIndex: number) => {
     if (isLoading || targetPageIndex === currentPageIndex) {
       return;
     }
 
     if (unlockedPageIndexes.has(targetPageIndex)) {
-      setCurrentPageIndex(targetPageIndex);
+      const shouldSaveDraft = targetPageIndex > currentPageIndex && !isReadOnly;
+      const isDraftSaved = shouldSaveDraft
+        ? await saveDraft(targetPageIndex)
+        : true;
+
+      if (isDraftSaved) {
+        setCurrentPageIndex(targetPageIndex);
+      }
       return;
     }
 
@@ -739,6 +932,11 @@ export const SurveyFill = ({
   };
 
   const handleSubmit = async () => {
+    if (isReadOnly) {
+      setFeedback("Jawaban survey ini sudah terkirim dan tidak bisa diubah.");
+      return;
+    }
+
     if (!isAuthenticated) {
       setFeedback("Silakan login terlebih dahulu untuk mengirim survey.");
       onAuthAction?.();
@@ -785,6 +983,8 @@ export const SurveyFill = ({
       if (draftKey) {
         localStorage.removeItem(draftKey);
       }
+
+      setResponseStatus("submitted");
 
       onCompleteSurvey?.({
         submittedAt: new Date().toISOString(),
@@ -851,6 +1051,7 @@ export const SurveyFill = ({
               >
                 <input
                   checked={isSelected}
+                  disabled={isReadOnly}
                   name={`question-${question.id}`}
                   onChange={() => {
                     if (isCheckbox) {
@@ -883,6 +1084,7 @@ export const SurveyFill = ({
           aria-label={question.text}
           onChange={(event) => updateAnswer(question.id, event.target.value)}
           placeholder="Tuliskan jawaban Anda di sini..."
+          readOnly={isReadOnly}
           value={typeof value === "string" ? value : ""}
         />
       );
@@ -912,6 +1114,7 @@ export const SurveyFill = ({
               aria-expanded={isOpen}
               aria-haspopup="listbox"
               className={selectedOption ? "" : "is-placeholder"}
+              disabled={isReadOnly}
               onClick={() => toggleDropdown(question.id)}
               ref={(element) => {
                 dropdownButtonRefs.current[question.id] = element;
@@ -1040,6 +1243,7 @@ export const SurveyFill = ({
         }}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="survey-fill-shell">
@@ -1070,11 +1274,10 @@ export const SurveyFill = ({
             </p>
           </header>
 
-          <section className="survey-fill-progress" aria-label="Progress pengisian">
-            <div>
-              <strong>{currentStepLabel}</strong>
-              <span>{progressPercent}% Selesai</span>
-            </div>
+          <section
+            aria-label={`Progress pengisian ${progressPercent}% selesai`}
+            className="survey-fill-progress"
+          >
             <div className="survey-fill-progress__bars">
               {Array.from({ length: totalPages }, (_, index) => {
                 const isCurrentStep = index === currentPageIndex;
@@ -1096,7 +1299,7 @@ export const SurveyFill = ({
                       .join(" ")}
                     disabled={isLoading}
                     key={index}
-                    onClick={() => handleProgressClick(index)}
+                    onClick={() => void handleProgressClick(index)}
                     type="button"
                   >
                     {!isStepUnlocked && (
@@ -1144,22 +1347,25 @@ export const SurveyFill = ({
                       <img src={arrowLeftIcon} alt="" aria-hidden="true" />
                       Kembali
                     </button>
-                    <button
-                      className="survey-fill-actions__draft"
-                      onClick={handleSaveDraft}
-                      type="button"
-                    >
-                      <img src={fillSaveDraftIcon} alt="" aria-hidden="true" />
-                      Simpan Draft
-                    </button>
                   </div>
 
                   <p className="survey-fill-autosave">
                     <img src={fillAutosaveIcon} alt="" aria-hidden="true" />
-                    Draft disimpan otomatis ke langkah ini
+                    {isReadOnly
+                      ? "Jawaban sudah terkirim dan hanya bisa dilihat."
+                      : "Jawaban tersimpan otomatis saat menekan Selanjutnya."}
                   </p>
 
-                  {currentPageIndex === pages.length - 1 ? (
+                  {isReadOnly ? (
+                    <button
+                      className="survey-fill-actions__primary"
+                      onClick={onOpenSurveyList}
+                      type="button"
+                    >
+                      Kembali ke Daftar Survey
+                      <img src={arrowRightIcon} alt="" aria-hidden="true" />
+                    </button>
+                  ) : currentPageIndex === pages.length - 1 ? (
                     <button
                       className="survey-fill-actions__primary"
                       disabled={isSubmitting}
@@ -1172,10 +1378,11 @@ export const SurveyFill = ({
                   ) : (
                     <button
                       className="survey-fill-actions__primary"
-                      onClick={handleNext}
+                      disabled={isSavingDraft}
+                      onClick={() => void handleNext()}
                       type="button"
                     >
-                      Selanjutnya
+                      {isSavingDraft ? "Menyimpan..." : "Selanjutnya"}
                       <img src={arrowRightIcon} alt="" aria-hidden="true" />
                     </button>
                   )}

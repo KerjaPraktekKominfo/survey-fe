@@ -17,6 +17,7 @@ type HomeProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
   accountName?: string;
+  accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
@@ -227,6 +228,7 @@ export const Home = ({
   accountDescription,
   accountAvatarSrc,
   accountName,
+  accountPrivileges,
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
@@ -345,6 +347,7 @@ export const Home = ({
         onAuthAction={handleAuthAction}
         onClose={closeSidebar}
         onNavigate={handleSidebarNavigation}
+        privileges={accountPrivileges}
       />
 
       <section className="home-shell">

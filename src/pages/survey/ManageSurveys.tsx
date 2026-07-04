@@ -16,6 +16,7 @@ type ManageSurveysProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
   accountName?: string;
+  accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
@@ -325,6 +326,7 @@ export const ManageSurveys = ({
   accountDescription,
   accountAvatarSrc,
   accountName,
+  accountPrivileges,
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
@@ -354,6 +356,9 @@ export const ManageSurveys = ({
   const [isPerPageOpen, setIsPerPageOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
+  const canCreateSurvey = accountPrivileges?.includes("survey:create") ?? false;
+  const canUpdateSurvey = accountPrivileges?.includes("survey:update") ?? false;
+  const canDeleteSurvey = accountPrivileges?.includes("survey:delete") ?? false;
 
   const fetchSurveys = useCallback(
     async (signal: AbortSignal) => {
@@ -521,7 +526,7 @@ export const ManageSurveys = ({
   };
 
   const handleDeleteSurvey = async () => {
-    if (!deleteTarget) {
+    if (!deleteTarget || !canDeleteSurvey) {
       return;
     }
 
@@ -587,6 +592,7 @@ export const ManageSurveys = ({
         onAuthAction={handleAuthAction}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="manage-survey-shell">
@@ -597,14 +603,16 @@ export const ManageSurveys = ({
               <p>Manajemen data survey OPD Anda</p>
             </div>
 
-            <button
-              className="manage-survey-create"
-              onClick={onCreateSurvey}
-              type="button"
-            >
-              <span aria-hidden="true">+</span>
-              Buat Survey Baru
-            </button>
+            {canCreateSurvey && (
+              <button
+                className="manage-survey-create"
+                onClick={onCreateSurvey}
+                type="button"
+              >
+                <span aria-hidden="true">+</span>
+                Buat Survey Baru
+              </button>
+            )}
           </header>
 
           <section className="manage-survey-filters" aria-label="Filter survey">
@@ -766,30 +774,37 @@ export const ManageSurveys = ({
                         </td>
                         <td>
                           <div className="manage-survey-actions">
-                            <button
-                              aria-label={`Ubah ${survey.title}`}
-                              onClick={() => onEditSurvey?.(Number(survey.id))}
-                              type="button"
-                            >
-                              <img src={editIcon} alt="" aria-hidden="true" />
-                            </button>
-                            <button
-                              aria-label={`Hapus ${survey.title}`}
-                              onClick={() =>
-                                setDeleteTarget({
-                                  id: survey.id,
-                                  title: survey.title,
-                                })
-                              }
-                              type="button"
-                            >
-                              <img
-                                src={trashIcon}
-                                alt=""
-                                aria-hidden="true"
-                                className="manage-survey-trash"
-                              />
-                            </button>
+                            {canUpdateSurvey && (
+                              <button
+                                aria-label={`Ubah ${survey.title}`}
+                                onClick={() => onEditSurvey?.(Number(survey.id))}
+                                type="button"
+                              >
+                                <img src={editIcon} alt="" aria-hidden="true" />
+                              </button>
+                            )}
+                            {canDeleteSurvey && (
+                              <button
+                                aria-label={`Hapus ${survey.title}`}
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    id: survey.id,
+                                    title: survey.title,
+                                  })
+                                }
+                                type="button"
+                              >
+                                <img
+                                  src={trashIcon}
+                                  alt=""
+                                  aria-hidden="true"
+                                  className="manage-survey-trash"
+                                />
+                              </button>
+                            )}
+                            {!canUpdateSurvey && !canDeleteSurvey && (
+                              <span className="manage-survey-actions__empty">-</span>
+                            )}
                           </div>
                         </td>
                       </tr>

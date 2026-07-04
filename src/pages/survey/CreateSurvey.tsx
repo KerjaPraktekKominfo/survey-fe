@@ -28,6 +28,7 @@ type CreateSurveyProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
   accountName?: string;
+  accountPrivileges?: string[];
   editSurveyId?: number | null;
   isAuthenticated: boolean;
   mode?: "create" | "edit";
@@ -685,6 +686,7 @@ export const CreateSurvey = ({
   accountDescription,
   accountAvatarSrc,
   accountName,
+  accountPrivileges,
   editSurveyId = null,
   isAuthenticated,
   mode = "create",
@@ -2451,6 +2453,7 @@ export const CreateSurvey = ({
         onAuthAction={handleAuthAction}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="create-survey-shell">

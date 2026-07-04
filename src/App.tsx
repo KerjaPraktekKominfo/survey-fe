@@ -51,6 +51,7 @@ type AccountProfile = ProfilePhotoSource & {
   full_name?: string | null;
   id?: number | string | null;
   position?: string | null;
+  privileges?: string[];
   role_id?: number | string | null;
   username?: string | null;
 };
@@ -64,6 +65,9 @@ type SurveyCompletionPayload = {
   surveyId: number;
   title: string;
 };
+
+const hasPrivilege = (privileges: string[] | undefined, privilege: string) =>
+  privileges?.includes(privilege) ?? false;
 
 const PAGE_PATHS: Record<AuthPage, string> = {
   "access-management": "/access-control",
@@ -462,31 +466,46 @@ function App() {
   }, [goToLogin, isAuthenticated, navigate]);
 
   const openManageSurveys = useCallback(() => {
-    if (isAuthenticated) {
+    if (
+      isAuthenticated &&
+      hasPrivilege(accountProfile?.privileges, "survey:read")
+    ) {
       navigate("manage-surveys");
       return;
     }
 
-    goToLogin();
-  }, [goToLogin, isAuthenticated, navigate]);
+    if (!isAuthenticated) {
+      goToLogin();
+    }
+  }, [accountProfile?.privileges, goToLogin, isAuthenticated, navigate]);
 
   const openUserManagement = useCallback(() => {
-    if (isAuthenticated) {
+    if (
+      isAuthenticated &&
+      hasPrivilege(accountProfile?.privileges, "user:read")
+    ) {
       navigate("user-management");
       return;
     }
 
-    goToLogin();
-  }, [goToLogin, isAuthenticated, navigate]);
+    if (!isAuthenticated) {
+      goToLogin();
+    }
+  }, [accountProfile?.privileges, goToLogin, isAuthenticated, navigate]);
 
   const openAccessManagement = useCallback(() => {
-    if (isAuthenticated) {
+    if (
+      isAuthenticated &&
+      hasPrivilege(accountProfile?.privileges, "role:read")
+    ) {
       navigate("access-management");
       return;
     }
 
-    goToLogin();
-  }, [goToLogin, isAuthenticated, navigate]);
+    if (!isAuthenticated) {
+      goToLogin();
+    }
+  }, [accountProfile?.privileges, goToLogin, isAuthenticated, navigate]);
 
   const openSurveyList = useCallback(() => {
     navigate("survey-list");
@@ -556,18 +575,27 @@ function App() {
   );
 
   const openCreateSurvey = useCallback(() => {
-    if (isAuthenticated) {
+    if (
+      isAuthenticated &&
+      hasPrivilege(accountProfile?.privileges, "survey:create")
+    ) {
       navigate("create-survey");
       return;
     }
 
-    goToLogin();
-  }, [goToLogin, isAuthenticated, navigate]);
+    if (!isAuthenticated) {
+      goToLogin();
+    }
+  }, [accountProfile?.privileges, goToLogin, isAuthenticated, navigate]);
 
   const openEditSurvey = useCallback(
     (surveyId: number) => {
       if (!isAuthenticated) {
         goToLogin();
+        return;
+      }
+
+      if (!hasPrivilege(accountProfile?.privileges, "survey:update")) {
         return;
       }
 
@@ -580,7 +608,7 @@ function App() {
       setResetToken(null);
       setAuthPage("edit-survey");
     },
-    [goToLogin, isAuthenticated],
+    [accountProfile?.privileges, goToLogin, isAuthenticated],
   );
 
   const openForgotPassword = useCallback(() => {
@@ -593,10 +621,40 @@ function App() {
 
   const accountName = accountProfile?.full_name?.trim() || "Pengguna";
   const accountDescription = accountProfile?.username?.trim() || "Belum login";
+  const accountPrivileges = useMemo(
+    () => accountProfile?.privileges?.filter(Boolean) ?? [],
+    [accountProfile],
+  );
+  const canUsePrivilege = useCallback(
+    (privilege: string) =>
+      isAuthenticated && accountPrivileges.includes(privilege),
+    [accountPrivileges, isAuthenticated],
+  );
   const accountAvatarSrc = useMemo(
     () => resolveProfilePhotoUrl(accountProfile, adminAvatar),
     [accountProfile],
   );
+
+  useEffect(() => {
+    if (!isAuthenticated || !accountProfile) {
+      return;
+    }
+
+    const blockedPage =
+      (authPage === "manage-surveys" && !canUsePrivilege("survey:read")) ||
+      (authPage === "create-survey" && !canUsePrivilege("survey:create")) ||
+      (authPage === "edit-survey" && !canUsePrivilege("survey:update")) ||
+      (authPage === "user-management" && !canUsePrivilege("user:read")) ||
+      (authPage === "access-management" && !canUsePrivilege("role:read"));
+
+    if (blockedPage) {
+      const timerId = window.setTimeout(() => {
+        navigate("home", true);
+      }, 0);
+
+      return () => window.clearTimeout(timerId);
+    }
+  }, [accountProfile, authPage, canUsePrivilege, isAuthenticated, navigate]);
 
   const renderLogoutDialog = () => {
     if (!isLogoutConfirmOpen) {
@@ -648,6 +706,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onOpenAccessManagement={openAccessManagement}
@@ -666,6 +725,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -674,6 +734,7 @@ function App() {
         onOpenProfile={openProfile}
         accountPosition={accountProfile?.position}
         onOpenSurveyDetail={openSurveyDetail}
+        onOpenSurveyFill={openSurveyFill}
         onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
       />,
@@ -686,6 +747,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -707,6 +769,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -729,6 +792,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -749,6 +813,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -769,6 +834,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -790,6 +856,7 @@ function App() {
         accountAvatarSrc={accountAvatarSrc}
         accountId={accountProfile?.id}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onOpenAccessManagement={openAccessManagement}
@@ -809,6 +876,7 @@ function App() {
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         accountRoleId={accountProfile?.role_id}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -827,6 +895,7 @@ function App() {
         accountDescription={accountDescription}
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -847,6 +916,7 @@ function App() {
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         editSurveyId={editSurveyId}
+        accountPrivileges={accountPrivileges}
         isAuthenticated={isAuthenticated}
         mode="edit"
         onAuthAction={handleAuthAction}

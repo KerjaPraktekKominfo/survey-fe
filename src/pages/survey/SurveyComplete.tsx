@@ -3,7 +3,6 @@ import { Sidebar } from "../../components/sidebar";
 import { Topbar } from "../../components/topbar";
 import adminAvatar from "../../assets/home/home-admin-avatar.png";
 import checkIcon from "../../assets/survey/complete/complete-check.svg";
-import historyIcon from "../../assets/survey/complete/complete-history.svg";
 import homeIcon from "../../assets/survey/complete/complete-home.svg";
 import shareIcon from "../../assets/survey/complete/complete-share.svg";
 import { API_BASE_URL } from "../../lib/api";
@@ -16,6 +15,7 @@ type SurveyCompleteProps = {
   accountDescription?: string;
   accountAvatarSrc?: string;
   accountName?: string;
+  accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
@@ -87,6 +87,7 @@ export const SurveyComplete = ({
   accountDescription,
   accountAvatarSrc,
   accountName,
+  accountPrivileges,
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
@@ -207,6 +208,7 @@ export const SurveyComplete = ({
         }}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="survey-complete-shell">
@@ -243,10 +245,6 @@ export const SurveyComplete = ({
               <button onClick={onBackHome} type="button">
                 <img src={homeIcon} alt="" aria-hidden="true" />
                 Kembali ke Beranda
-              </button>
-              <button type="button">
-                <img src={historyIcon} alt="" aria-hidden="true" />
-                Lihat Riwayat Survey
               </button>
             </div>
           </section>

@@ -21,6 +21,7 @@ type SurveyListProps = {
   accountAvatarSrc?: string;
   accountName?: string;
   accountPosition?: string | null;
+  accountPrivileges?: string[];
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
@@ -28,6 +29,7 @@ type SurveyListProps = {
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyDetail?: (surveyId: number | string) => void;
+  onOpenSurveyFill?: (surveyId: number | string) => void;
   onOpenUserManagement?: () => void;
   onUnauthorized?: () => void;
 };
@@ -43,6 +45,9 @@ type SurveyApiItem = {
   thumbnail?: string | null;
   thumbnail_path?: string | null;
   title?: string | null;
+  user_response_current_page?: number | string | null;
+  user_response_status?: string | null;
+  user_response_submitted_at?: string | null;
 };
 
 type SurveyApiResult = {
@@ -71,6 +76,7 @@ type SurveyCard = {
   image?: string | null;
   opensAt?: string | null;
   positions: string[];
+  responseStatus?: string | null;
   status: string;
   title: string;
 };
@@ -222,6 +228,7 @@ const normalizeSurvey = (survey: SurveyApiItem): SurveyCard => ({
   image: survey.thumbnail_path ?? survey.thumbnail,
   opensAt: survey.opens_at,
   positions: normalizePositions(survey.positions),
+  responseStatus: survey.user_response_status?.trim().toLowerCase() || null,
   status: survey.status?.trim().toLowerCase() || "upcoming",
   title: survey.title?.trim() || "Survey Pemerintah Kota Yogyakarta",
 });
@@ -282,6 +289,18 @@ const getStatusLabel = (status: string) => STATUS_LABELS[status] ?? status;
 
 const isPublicSurveyStatus = (status: string) =>
   status === "open" || status === "upcoming";
+
+const getSurveyActionLabel = (survey: SurveyCard) => {
+  if (survey.responseStatus === "submitted") {
+    return "Lihat";
+  }
+
+  if (survey.responseStatus === "draft") {
+    return "Lanjutkan";
+  }
+
+  return survey.status === "open" ? "Mulai Survei" : "Belum Aktif";
+};
 
 const normalizeAccountPosition = (position?: string | null) => {
   const normalizedPosition = position?.trim().toLowerCase();
@@ -386,6 +405,7 @@ export const SurveyList = ({
   accountAvatarSrc,
   accountName,
   accountPosition,
+  accountPrivileges,
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
@@ -393,6 +413,7 @@ export const SurveyList = ({
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyDetail,
+  onOpenSurveyFill,
   onOpenUserManagement,
   onUnauthorized,
 }: SurveyListProps) => {
@@ -600,6 +621,11 @@ export const SurveyList = ({
   };
 
   const handleOpenSurveyDetail = (survey: SurveyCard) => {
+    if (survey.responseStatus === "draft" || survey.responseStatus === "submitted") {
+      onOpenSurveyFill?.(survey.id);
+      return;
+    }
+
     if (survey.status !== "open") {
       setFeedbackMessage("Survey ini belum dapat diisi.");
       return;
@@ -630,6 +656,7 @@ export const SurveyList = ({
         onAuthAction={handleAuthAction}
         onClose={closeSidebar}
         onNavigate={handleNavigationClick}
+        privileges={accountPrivileges}
       />
 
       <section className="survey-list-shell">
@@ -778,7 +805,7 @@ export const SurveyList = ({
                         onClick={() => handleOpenSurveyDetail(survey)}
                         type="button"
                       >
-                        {survey.status === "open" ? "Mulai Survei" : "Belum Aktif"}
+                        {getSurveyActionLabel(survey)}
                         <img src={arrowRightIcon} alt="" aria-hidden="true" />
                       </button>
                     </div>
