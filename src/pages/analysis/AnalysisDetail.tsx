@@ -13,6 +13,7 @@ import { resolveProfilePhotoUrl, type ProfilePhotoSource } from "../../lib/profi
 import "../../styles/analysis/Analysis.scss";
 
 const RESPONDENT_PER_PAGE = 5;
+const PER_PAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
 type AnalysisDetailProps = {
   accountDescription?: string;
@@ -155,9 +156,12 @@ const parseNumber = (value: number | string | null | undefined, fallback = 0) =>
   return fallback;
 };
 
-const normalizeMeta = (meta?: ApiMeta): PaginationMeta => ({
+const normalizeMeta = (
+  meta?: ApiMeta,
+  fallbackPerPage = RESPONDENT_PER_PAGE,
+): PaginationMeta => ({
   page: Math.max(1, parseNumber(meta?.page, 1)),
-  perPage: Math.max(1, parseNumber(meta?.per_page, RESPONDENT_PER_PAGE)),
+  perPage: Math.max(1, parseNumber(meta?.per_page, fallbackPerPage)),
   total: Math.max(0, parseNumber(meta?.total, 0)),
   totalPages: Math.max(1, parseNumber(meta?.total_pages, 1)),
 });
@@ -229,11 +233,14 @@ export const AnalysisDetail = ({
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [perPage, setPerPage] =
+    useState<(typeof PER_PAGE_OPTIONS)[number]>(RESPONDENT_PER_PAGE);
   const [meta, setMeta] = useState<PaginationMeta>(initialMeta);
   const [detail, setDetail] = useState<AnalysisDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [isLimitOpen, setIsLimitOpen] = useState(false);
   const [selectedPage, setSelectedPage] = useState(1);
   const [isPageSidebarOpen, setIsPageSidebarOpen] = useState(true);
   const [selectedRespondentPage, setSelectedRespondentPage] = useState(1);
@@ -268,7 +275,7 @@ export const AnalysisDetail = ({
 
       const params = new URLSearchParams({
         page: String(page),
-        per_page: String(RESPONDENT_PER_PAGE),
+        per_page: String(perPage),
       });
 
       if (searchQuery) {
@@ -297,7 +304,7 @@ export const AnalysisDetail = ({
 
         const result = (await response.json()) as ApiResult<AnalysisDetailData>;
         const nextDetail = result.data ?? null;
-        const nextMeta = normalizeMeta(nextDetail?.respondents?.meta);
+        const nextMeta = normalizeMeta(nextDetail?.respondents?.meta, perPage);
 
         setDetail(nextDetail);
         setMeta(nextMeta);
@@ -337,7 +344,7 @@ export const AnalysisDetail = ({
     void fetchDetail();
 
     return () => controller.abort();
-  }, [onUnauthorized, page, searchQuery, surveyId]);
+  }, [onUnauthorized, page, perPage, searchQuery, surveyId]);
 
   const activePage =
     (detail?.pages ?? []).find(
@@ -426,6 +433,12 @@ export const AnalysisDetail = ({
     event.preventDefault();
     setSearchQuery(searchInput.trim());
     setPage(1);
+  };
+
+  const handlePerPageChange = (nextPerPage: (typeof PER_PAGE_OPTIONS)[number]) => {
+    setPerPage(nextPerPage);
+    setPage(1);
+    setIsLimitOpen(false);
   };
 
   const handleExport = async () => {
@@ -683,9 +696,30 @@ export const AnalysisDetail = ({
                     value={searchInput}
                   />
                 </label>
-                <button type="submit">
+                <button
+                  aria-expanded={isLimitOpen}
+                  aria-haspopup="listbox"
+                  aria-label="Atur jumlah responden per halaman"
+                  onClick={() => setIsLimitOpen((current) => !current)}
+                  type="button"
+                >
                   <img src={limitIcon} alt="" aria-hidden="true" />
                 </button>
+                {isLimitOpen && (
+                  <div className="analysis-limit__menu" role="listbox">
+                    {PER_PAGE_OPTIONS.map((option) => (
+                      <button
+                        className={option === perPage ? "is-selected" : ""}
+                        key={option}
+                        onClick={() => handlePerPageChange(option)}
+                        role="option"
+                        type="button"
+                      >
+                        {option} data
+                      </button>
+                    ))}
+                  </div>
+                )}
               </form>
             </header>
 
