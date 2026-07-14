@@ -104,82 +104,112 @@
 .survey-fill-progress {
   background: #ffffff;
   border: 1px solid rgba(226, 191, 185, 0.4);
-  border-radius: 12px;
+  border-radius: 8px 0 0 8px;
   box-shadow:
     0 1px 1px rgba(0, 0, 0, 0.05),
     0 8px 18px rgba(11, 28, 48, 0.04);
+  max-height: calc(100vh - 104px);
+  overflow: hidden;
+  padding: 10px;
+  position: fixed;
+  right: 0;
+  top: 88px;
+  width: 244px;
+  z-index: 18;
+
+  &.is-collapsed {
+    width: auto;
+  }
+}
+
+.survey-fill-progress__toggle {
+  align-items: center;
+  background: var(--survey-fill-maroon);
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 32px;
+  padding: 7px 12px;
+  width: 100%;
+}
+
+.survey-fill-progress__list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 20px 25px 13px;
-  position: sticky;
-  top: 64px;
-  z-index: 18;
-}
-
-.survey-fill-progress__bars {
-  display: flex;
-  gap: 8px;
+  margin-top: 10px;
+  max-height: calc(100vh - 168px);
+  overflow-y: auto;
+  padding-right: 2px;
 
   button {
     align-items: center;
-    background: var(--survey-fill-track);
-    border: 0;
-    border-radius: 9999px;
+    background: #fffafa;
+    border: 1px solid rgba(226, 191, 185, 0.45);
+    border-radius: 6px;
+    color: var(--survey-fill-muted);
     cursor: pointer;
-    display: flex;
-    flex: 1 1 0;
-    height: 8px;
-    justify-content: center;
-    min-width: 0;
-    padding: 0;
+    display: grid;
+    font: inherit;
+    gap: 10px;
+    grid-template-columns: 28px minmax(0, 1fr) 14px;
+    min-height: 42px;
+    padding: 7px 10px;
+    text-align: left;
+
+    strong {
+      align-items: center;
+      background: var(--survey-fill-track);
+      border-radius: 999px;
+      color: var(--survey-fill-muted);
+      display: inline-flex;
+      font-size: 12px;
+      height: 28px;
+      justify-content: center;
+      width: 28px;
+    }
+
+    span {
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 18px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     img {
       height: 12px;
       object-fit: contain;
-      opacity: 0.8;
+      opacity: 0.75;
       width: 10px;
     }
 
-    &.is-complete {
+    &.is-complete strong {
       background: var(--survey-fill-maroon);
+      color: #ffffff;
     }
 
-    &.is-unlocked {
-      cursor: pointer;
+    &.is-current,
+    &:hover:not(:disabled) {
+      border-color: var(--survey-fill-maroon-strong);
+      color: var(--survey-fill-maroon-strong);
     }
 
     &.is-locked {
-      background: var(--survey-fill-track);
+      cursor: not-allowed;
+      opacity: 0.72;
     }
 
     &:disabled {
       cursor: not-allowed;
-    }
-  }
-}
-
-.survey-fill-progress__labels {
-  align-items: flex-start;
-  display: flex;
-  justify-content: space-between;
-  padding-top: 8px;
-
-  span {
-    color: var(--survey-fill-muted);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    line-height: 15px;
-    max-width: 120px;
-    opacity: 0.4;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-transform: uppercase;
-    white-space: nowrap;
-
-    &.is-active {
-      opacity: 1;
     }
   }
 }
@@ -804,15 +834,8 @@
 
 @media (max-width: 560px) {
   .survey-fill-progress {
+    max-width: calc(100vw - 16px);
     padding: 16px;
-  }
-
-  .survey-fill-progress__labels {
-    gap: 8px;
-
-    span {
-      max-width: 72px;
-    }
   }
 
   .survey-fill-question__body {

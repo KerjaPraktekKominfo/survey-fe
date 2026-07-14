@@ -21,7 +21,7 @@ export const Topbar = ({
     <button
       aria-controls={sidebarId}
       aria-expanded={isSidebarOpen}
-      aria-label={isSidebarOpen ? "Tutup menu" : "Buka menu"}
+      aria-label="Tampilkan atau sembunyikan menu"
       className="app-topbar__menu"
       onClick={onToggleSidebar}
       type="button"

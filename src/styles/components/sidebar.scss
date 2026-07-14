@@ -22,6 +22,7 @@
   padding: 16px 0;
   position: fixed;
   top: 64px;
+  transition: transform 180ms ease;
   width: 256px;
   z-index: 10;
 }
@@ -148,6 +149,31 @@
     &:focus-visible {
       background: rgba(226, 191, 185, 0.18);
       outline: none;
+    }
+  }
+}
+
+@media (min-width: 821px) {
+  .app-sidebar.is-open {
+    transform: translateX(-100%);
+  }
+
+  main:has(.app-sidebar.is-open) {
+    .access-management-shell,
+    .analysis-detail-shell,
+    .analysis-shell,
+    .create-survey-shell,
+    .history-shell,
+    .home-shell,
+    .manage-survey-shell,
+    .profile-shell,
+    .survey-complete-shell,
+    .survey-detail-shell,
+    .survey-fill-shell,
+    .survey-list-shell,
+    .user-management-shell {
+      margin-left: 0;
+      max-width: 100vw;
     }
   }
 }

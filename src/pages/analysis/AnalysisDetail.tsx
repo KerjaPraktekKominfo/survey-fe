@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type CSSProperties, type FormEvent, useEffect, useState } from "react";
 import { Sidebar } from "../../components/sidebar";
 import { Topbar } from "../../components/topbar";
 import adminAvatar from "../../assets/home/home-admin-avatar.png";
@@ -235,6 +235,7 @@ export const AnalysisDetail = ({
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [selectedPage, setSelectedPage] = useState(1);
+  const [isPageSidebarOpen, setIsPageSidebarOpen] = useState(true);
   const [selectedRespondentPage, setSelectedRespondentPage] = useState(1);
   const [selectedRespondent, setSelectedRespondent] =
     useState<DetailRespondent | null>(null);
@@ -691,26 +692,6 @@ export const AnalysisDetail = ({
                 <h2>Rekapitulasi Jawaban Per Pertanyaan</h2>
                 <p>Total data yang diolah dari response submitted.</p>
               </div>
-              <div className="analysis-page-tabs" role="tablist">
-                {(detail?.pages ?? []).map((pageItem) => {
-                  const pageNumber = Math.max(1, Number(pageItem.page) || 1);
-                  const sectionName = pageItem.section?.trim() || `Halaman ${pageNumber}`;
-
-                  return (
-                    <button
-                      aria-selected={pageNumber === selectedPage}
-                      className={pageNumber === selectedPage ? "is-active" : ""}
-                      key={pageNumber}
-                      onClick={() => setSelectedPage(pageNumber)}
-                      role="tab"
-                      title={sectionName}
-                      type="button"
-                    >
-                      {sectionName}
-                    </button>
-                  );
-                })}
-              </div>
             </header>
 
             <div className="analysis-question-list">
@@ -747,7 +728,18 @@ export const AnalysisDetail = ({
                   ) : (
                     <div className="analysis-option-list">
                       {(question.options ?? []).map((option) => (
-                        <div key={option.id ?? option.option_text}>
+                        <div
+                          className="analysis-option-row"
+                          key={option.id ?? option.option_text}
+                          style={
+                            {
+                              "--analysis-option-fill": `${Math.min(
+                                100,
+                                Math.max(0, parseNumber(option.percentage, 0)),
+                              )}%`,
+                            } as CSSProperties
+                          }
+                        >
                           <span>{option.option_text}</span>
                           <strong>
                             {formatNumber(parseNumber(option.count, 0))} Responden
@@ -771,6 +763,45 @@ export const AnalysisDetail = ({
             </div>
           </section>
         </div>
+
+        <aside
+          aria-label="Navigasi section analisis"
+          className={`analysis-page-sidebar ${
+            isPageSidebarOpen ? "is-open" : "is-collapsed"
+          }`}
+        >
+          <button
+            aria-expanded={isPageSidebarOpen}
+            className="analysis-page-sidebar__toggle"
+            onClick={() => setIsPageSidebarOpen((current) => !current)}
+            type="button"
+          >
+            {isPageSidebarOpen ? "Tutup" : "Section"}
+          </button>
+          {isPageSidebarOpen && (
+            <div className="analysis-page-sidebar__list" role="tablist">
+              {(detail?.pages ?? []).map((pageItem) => {
+                const pageNumber = Math.max(1, Number(pageItem.page) || 1);
+                const sectionName = pageItem.section?.trim() || `Halaman ${pageNumber}`;
+
+                return (
+                  <button
+                    aria-selected={pageNumber === selectedPage}
+                    className={pageNumber === selectedPage ? "is-active" : ""}
+                    key={pageNumber}
+                    onClick={() => setSelectedPage(pageNumber)}
+                    role="tab"
+                    title={sectionName}
+                    type="button"
+                  >
+                    <strong>{pageNumber}</strong>
+                    <span>{sectionName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </aside>
       </section>
 
       {selectedRespondent && (

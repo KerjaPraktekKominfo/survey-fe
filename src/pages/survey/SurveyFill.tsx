@@ -470,6 +470,7 @@ export const SurveyFill = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(() => Boolean(surveyId));
+  const [isProgressSidebarOpen, setIsProgressSidebarOpen] = useState(true);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1288,46 +1289,53 @@ export const SurveyFill = ({
 
           <section
             aria-label={`Progress pengisian ${progressPercent}% selesai`}
-            className="survey-fill-progress"
+            className={`survey-fill-progress ${
+              isProgressSidebarOpen ? "is-open" : "is-collapsed"
+            }`}
           >
-            <div className="survey-fill-progress__bars">
-              {Array.from({ length: totalPages }, (_, index) => {
-                const isCurrentStep = index === currentPageIndex;
-                const isStepComplete = index < completedPageCount;
-                const isStepUnlocked = unlockedPageIndexes.has(index);
+            <button
+              aria-expanded={isProgressSidebarOpen}
+              className="survey-fill-progress__toggle"
+              onClick={() => setIsProgressSidebarOpen((current) => !current)}
+              type="button"
+            >
+              {isProgressSidebarOpen ? "Tutup" : "Halaman"}
+            </button>
+            {isProgressSidebarOpen && (
+              <div className="survey-fill-progress__list">
+                {pages.map((page, index) => {
+                  const isCurrentStep = index === currentPageIndex;
+                  const isStepComplete = index < completedPageCount;
+                  const isStepUnlocked = unlockedPageIndexes.has(index);
 
-                return (
-                  <button
-                    aria-current={isCurrentStep ? "step" : undefined}
-                    aria-label={`Buka ${pages[index]?.section ?? `langkah ${index + 1}`}${
-                      isStepUnlocked ? "" : " (terkunci)"
-                    }`}
-                    className={[
-                      isCurrentStep ? "is-current" : "",
-                      isStepComplete ? "is-complete" : "",
-                      isStepUnlocked ? "is-unlocked" : "is-locked",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    disabled={isLoading}
-                    key={index}
-                    onClick={() => void handleProgressClick(index)}
-                    type="button"
-                  >
-                    {!isStepUnlocked && (
-                      <img src={lockIcon} alt="" aria-hidden="true" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="survey-fill-progress__labels">
-              {pages.map((page, index) => (
-                <span className={index === currentPageIndex ? "is-active" : ""} key={page.page}>
-                  {page.section}
-                </span>
-              ))}
-            </div>
+                  return (
+                    <button
+                      aria-current={isCurrentStep ? "step" : undefined}
+                      aria-label={`Buka ${page.section ?? `langkah ${index + 1}`}${
+                        isStepUnlocked ? "" : " (terkunci)"
+                      }`}
+                      className={[
+                        isCurrentStep ? "is-current" : "",
+                        isStepComplete ? "is-complete" : "",
+                        isStepUnlocked ? "is-unlocked" : "is-locked",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      disabled={isLoading}
+                      key={page.page}
+                      onClick={() => void handleProgressClick(index)}
+                      type="button"
+                    >
+                      <strong>{index + 1}</strong>
+                      <span>{page.section}</span>
+                      {!isStepUnlocked && (
+                        <img src={lockIcon} alt="" aria-hidden="true" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           <section className="survey-fill-card" aria-busy={isLoading}>

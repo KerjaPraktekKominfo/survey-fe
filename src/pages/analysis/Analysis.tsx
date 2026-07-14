@@ -552,7 +552,7 @@ export const Analysis = ({
 
           <section className="analysis-table-card" aria-busy={isLoading}>
             <header>
-              <h2>Daftar Survey Lengkap</h2>
+              <h2>Daftar Survey Anda</h2>
               <div className="analysis-table-tools">
                 <form onSubmit={handleSearchSubmit}>
                   <label>

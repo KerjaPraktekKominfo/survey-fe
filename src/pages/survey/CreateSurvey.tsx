@@ -800,6 +800,7 @@ export const CreateSurvey = ({
   );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [isQuestionSidebarOpen, setIsQuestionSidebarOpen] = useState(true);
   const [isDetailLoading, setIsDetailLoading] = useState(
     mode === "edit" && editSurveyId !== null,
   );
@@ -2348,30 +2349,52 @@ export const CreateSurvey = ({
         aria-labelledby="survey-question-title"
       >
       <div
-        className="create-question-tabs"
+        className={`create-question-tabs ${
+          isQuestionSidebarOpen ? "is-open" : "is-collapsed"
+        }`}
         role="tablist"
         aria-label="Halaman survey"
       >
-        {questionPages.map((pageNumber) => (
-          <button
-            aria-selected={activePage === pageNumber}
-            className={activePage === pageNumber ? "is-active" : ""}
-            key={pageNumber}
-            onClick={() => selectQuestionPage(pageNumber)}
-            role="tab"
-            type="button"
-          >
-            Halaman {pageNumber}
-          </button>
-        ))}
         <button
-          aria-label="Tambah halaman survey"
-          className="create-question-tabs__add"
-          onClick={addQuestionPage}
+          aria-expanded={isQuestionSidebarOpen}
+          className="create-question-tabs__toggle"
+          onClick={() => setIsQuestionSidebarOpen((current) => !current)}
           type="button"
         >
-          <img src={pagePlusIcon} alt="" aria-hidden="true" />
+          {isQuestionSidebarOpen ? "Tutup" : "Halaman"}
         </button>
+        {isQuestionSidebarOpen && (
+          <div className="create-question-tabs__list">
+            {questionPages.map((pageNumber) => {
+              const sectionName =
+                sectionTitles[pageNumber]?.trim() || `Halaman ${pageNumber}`;
+
+              return (
+                <button
+                  aria-selected={activePage === pageNumber}
+                  className={activePage === pageNumber ? "is-active" : ""}
+                  key={pageNumber}
+                  onClick={() => selectQuestionPage(pageNumber)}
+                  role="tab"
+                  title={sectionName}
+                  type="button"
+                >
+                  <strong>{pageNumber}</strong>
+                  <span>{sectionName}</span>
+                </button>
+              );
+            })}
+            <button
+              aria-label="Tambah halaman survey"
+              className="create-question-tabs__add"
+              onClick={addQuestionPage}
+              type="button"
+            >
+              <img src={pagePlusIcon} alt="" aria-hidden="true" />
+              <span>Tambah Halaman</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="create-question-title-row">
@@ -2652,14 +2675,10 @@ export const CreateSurvey = ({
               {step === 3 ? "Kembali" : "Batal"}
             </button>
             <div>
-              {!(isSurveyLocked && step === 3) && (
-                <button
-                  disabled={isSaving}
-                  onClick={() => void saveDraftOnly()}
-                  type="button"
-                >
-                  {isEditingSurvey ? "Simpan Perubahan" : "Simpan Draft"}
-                </button>
+              {step < 3 && (
+                <p className="create-survey-autosave">
+                  Perubahan tersimpan saat Anda menekan tombol Selanjutnya.
+                </p>
               )}
               {step < 3 ? (
                 <button
