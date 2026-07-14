@@ -33,8 +33,8 @@ const validatePassword = (password: string) => {
     return "Kata sandi baru harus diisi.";
   }
 
-  if (password.length < 8) {
-    return "Kata sandi baru minimal 8 karakter.";
+  if (password.length < 6) {
+    return "Kata sandi baru minimal 6 karakter.";
   }
 
   if (password.length > 255) {
@@ -257,7 +257,7 @@ export const ChangePassword = ({
                 id="profile-new-password"
                 name="password"
                 onChange={(event) => handlePasswordChange(event.target.value)}
-                placeholder="Minimal 8 karakter"
+                placeholder="Minimal 6 karakter"
                 type={visibleFields.password ? "text" : "password"}
                 value={password}
               />

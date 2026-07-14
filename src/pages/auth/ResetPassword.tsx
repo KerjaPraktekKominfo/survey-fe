@@ -29,8 +29,8 @@ const validatePassword = (password: string) => {
     return "Kata sandi baru harus diisi.";
   }
 
-  if (password.length < 8) {
-    return "Kata sandi baru minimal 8 karakter.";
+  if (password.length < 6) {
+    return "Kata sandi baru minimal 6 karakter.";
   }
 
   if (password.length > 255) {
@@ -188,7 +188,7 @@ export const ResetPassword = ({
                         : undefined,
                   }));
                 }}
-                placeholder="Minimal 8 karakter"
+                placeholder="Minimal 6 karakter"
                 type={showPassword ? "text" : "password"}
                 value={password}
               />
