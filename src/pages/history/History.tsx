@@ -24,6 +24,7 @@ type HistoryProps = {
   onAuthAction?: () => void;
   onBackHome?: () => void;
   onOpenAccessManagement?: () => void;
+  onOpenAnalysis?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
   onOpenSurveyFill?: (surveyId: number | string) => void;
@@ -365,6 +366,7 @@ export const History = ({
   onAuthAction,
   onBackHome,
   onOpenAccessManagement,
+  onOpenAnalysis,
   onOpenManageSurveys,
   onOpenProfile,
   onOpenSurveyFill,
@@ -504,6 +506,10 @@ export const History = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "Analisis") {
+      onOpenAnalysis?.();
     }
   };
 

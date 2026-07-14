@@ -20,6 +20,7 @@ type ManageSurveysProps = {
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
+  onOpenAnalysis?: () => void;
   onBackHome?: () => void;
   onCreateSurvey?: () => void;
   onEditSurvey?: (surveyId: number) => void;
@@ -331,6 +332,7 @@ export const ManageSurveys = ({
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
+  onOpenAnalysis,
   onBackHome,
   onCreateSurvey,
   onEditSurvey,
@@ -483,6 +485,10 @@ export const ManageSurveys = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "Analisis") {
+      onOpenAnalysis?.();
     }
 
     if (label === "History") {

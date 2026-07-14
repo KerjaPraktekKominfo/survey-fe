@@ -19,6 +19,7 @@ type SurveyFillProps = {
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
+  onOpenAnalysis?: () => void;
   onBackHome?: () => void;
   onCompleteSurvey?: (summary: { submittedAt: string; surveyId: number; title: string }) => void;
   onOpenHistory?: () => void;
@@ -453,6 +454,7 @@ export const SurveyFill = ({
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
+  onOpenAnalysis,
   onBackHome,
   onCompleteSurvey,
   onOpenHistory,
@@ -776,6 +778,10 @@ export const SurveyFill = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "Analisis") {
+      onOpenAnalysis?.();
     }
 
     if (label === "History") {

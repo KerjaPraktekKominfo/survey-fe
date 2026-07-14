@@ -40,7 +40,7 @@ const navigationItems: NavigationItem[] = [
     label: "Pengaturan Hak Akses",
     requiredPrivilege: "role:read",
   },
-  { icon: analyticsIcon, label: "Analytics", requiredPrivilege: "analytics:read" },
+  { icon: analyticsIcon, label: "Analisis", requiredPrivilege: "analytics:read" },
   { authenticatedOnly: true, icon: historyIcon, label: "History" },
 ];
 

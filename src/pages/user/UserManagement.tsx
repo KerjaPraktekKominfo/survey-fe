@@ -26,6 +26,7 @@ type UserManagementProps = {
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
+  onOpenAnalysis?: () => void;
   onBackHome?: () => void;
   onOpenHistory?: () => void;
   onOpenManageSurveys?: () => void;
@@ -322,6 +323,7 @@ export const UserManagement = ({
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
+  onOpenAnalysis,
   onBackHome,
   onOpenHistory,
   onOpenManageSurveys,
@@ -504,6 +506,10 @@ export const UserManagement = ({
 
     if (label === "Pengaturan Hak Akses") {
       onOpenAccessManagement?.();
+    }
+
+    if (label === "Analisis") {
+      onOpenAnalysis?.();
     }
 
     if (label === "History") {

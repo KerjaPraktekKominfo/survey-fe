@@ -2,6 +2,8 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import "./App.css";
 import adminAvatar from "./assets/home/home-admin-avatar.png";
 import { AccessManagement } from "./pages/access/AccessManagement";
+import { Analysis } from "./pages/analysis/Analysis";
+import { AnalysisDetail } from "./pages/analysis/AnalysisDetail";
 import { ForgotPassword } from "./pages/auth/ForgotPassword";
 import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
@@ -30,6 +32,8 @@ import {
 
 type AuthPage =
   | "access-management"
+  | "analysis"
+  | "analysis-detail"
   | "change-password"
   | "create-survey"
   | "edit-survey"
@@ -73,6 +77,8 @@ const hasPrivilege = (privileges: string[] | undefined, privilege: string) =>
 
 const PAGE_PATHS: Record<AuthPage, string> = {
   "access-management": "/access-control",
+  analysis: "/analytics",
+  "analysis-detail": "/analytics",
   "change-password": "/profile/change-password",
   "create-survey": "/surveys/create/informasi-umum",
   "edit-survey": "/surveys/manage",
@@ -93,6 +99,7 @@ const PAGE_PATHS: Record<AuthPage, string> = {
 
 const CREATE_SURVEY_BASE_PATH = "/surveys/create";
 const EDIT_SURVEY_PATH_PATTERN = /^\/surveys\/edit\/(\d+)(?:\/.*)?$/;
+const ANALYSIS_DETAIL_PATH_PATTERN = /^\/analytics\/(\d+)$/;
 const SURVEY_COMPLETE_PATH_PATTERN = /^\/surveys\/(\d+)\/complete$/;
 const SURVEY_FILL_PATH_PATTERN = /^\/surveys\/(\d+)\/fill$/;
 const SURVEY_DETAIL_PATH_PATTERN = /^\/surveys\/(\d+)$/;
@@ -108,6 +115,15 @@ const getEditSurveyIdFromPath = (path = window.location.pathname) => {
 };
 
 const isEditSurveyPath = (path: string) => getEditSurveyIdFromPath(path) !== null;
+
+const getAnalysisDetailIdFromPath = (path = window.location.pathname) => {
+  const [, surveyId] = path.match(ANALYSIS_DETAIL_PATH_PATTERN) ?? [];
+  const parsedSurveyId = Number(surveyId);
+  return Number.isFinite(parsedSurveyId) ? parsedSurveyId : null;
+};
+
+const isAnalysisDetailPath = (path: string) =>
+  getAnalysisDetailIdFromPath(path) !== null;
 
 const getSurveyCompleteIdFromPath = (path = window.location.pathname) => {
   const [, surveyId] = path.match(SURVEY_COMPLETE_PATH_PATTERN) ?? [];
@@ -155,6 +171,8 @@ const getInitialAuthPage = (): AuthPage => {
       isEditSurveyPath(normalizedPath) ||
       isSurveyCompletePath(normalizedPath) ||
       isSurveyFillPath(normalizedPath) ||
+      normalizedPath === PAGE_PATHS.analysis ||
+      isAnalysisDetailPath(normalizedPath) ||
       normalizedPath === PAGE_PATHS.history ||
       normalizedPath === PAGE_PATHS["manage-surveys"] ||
       normalizedPath === PAGE_PATHS["user-management"] ||
@@ -206,6 +224,14 @@ const getInitialAuthPage = (): AuthPage => {
 
   if (normalizedPath === PAGE_PATHS["access-management"]) {
     return "access-management";
+  }
+
+  if (normalizedPath === PAGE_PATHS.analysis) {
+    return "analysis";
+  }
+
+  if (isAnalysisDetailPath(normalizedPath)) {
+    return "analysis-detail";
   }
 
   if (isSurveyDetailPath(normalizedPath)) {
@@ -269,6 +295,13 @@ const syncUrl = (page: AuthPage, replace = false) => {
     return;
   }
 
+  if (
+    page === "analysis-detail" &&
+    isAnalysisDetailPath(url.pathname.replace(/\/+$/, ""))
+  ) {
+    return;
+  }
+
   url.pathname = PAGE_PATHS[page];
 
   if (page !== "reset-password") {
@@ -303,6 +336,9 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => hasAuthSession());
   const [resetToken, setResetToken] = useState<string | null>(() => getResetToken());
   const [authPage, setAuthPage] = useState<AuthPage>(() => getInitialAuthPage());
+  const [analysisDetailId, setAnalysisDetailId] = useState<number | null>(() =>
+    getAnalysisDetailIdFromPath(),
+  );
   const [editSurveyId, setEditSurveyId] = useState<number | null>(() =>
     getEditSurveyIdFromPath(),
   );
@@ -326,6 +362,7 @@ function App() {
     const handlePopState = () => {
       const nextResetToken = getResetToken();
       setResetToken(nextResetToken);
+      setAnalysisDetailId(getAnalysisDetailIdFromPath());
       setEditSurveyId(getEditSurveyIdFromPath());
       setSurveyCompleteId(getSurveyCompleteIdFromPath());
       setSurveyDetailId(getSurveyDetailIdFromPath());
@@ -340,6 +377,10 @@ function App() {
   const navigate = useCallback((page: AuthPage, replace = false) => {
     if (page !== "reset-password") {
       setResetToken(null);
+    }
+
+    if (page !== "analysis-detail") {
+      setAnalysisDetailId(null);
     }
 
     if (page !== "edit-survey") {
@@ -515,6 +556,20 @@ function App() {
     }
   }, [accountProfile?.privileges, goToLogin, isAuthenticated, navigate]);
 
+  const openAnalysis = useCallback(() => {
+    if (
+      isAuthenticated &&
+      hasPrivilege(accountProfile?.privileges, "analytics:read")
+    ) {
+      navigate("analysis");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      goToLogin();
+    }
+  }, [accountProfile?.privileges, goToLogin, isAuthenticated, navigate]);
+
   const openSurveyList = useCallback(() => {
     navigate("survey-list");
   }, [navigate]);
@@ -544,6 +599,35 @@ function App() {
     setResetToken(null);
     setAuthPage("survey-detail");
   }, []);
+
+  const openAnalysisDetail = useCallback(
+    (surveyId: number | string) => {
+      if (!isAuthenticated) {
+        goToLogin();
+        return;
+      }
+
+      if (!hasPrivilege(accountProfile?.privileges, "analytics:read")) {
+        return;
+      }
+
+      const parsedSurveyId = Number(surveyId);
+
+      if (!Number.isFinite(parsedSurveyId)) {
+        return;
+      }
+
+      const url = new URL(window.location.href);
+      url.pathname = `/analytics/${parsedSurveyId}`;
+      url.search = "";
+      url.hash = "";
+      window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      setAnalysisDetailId(parsedSurveyId);
+      setResetToken(null);
+      setAuthPage("analysis-detail");
+    },
+    [accountProfile?.privileges, goToLogin, isAuthenticated],
+  );
 
   const openSurveyFill = useCallback(
     (surveyId: number | string) => {
@@ -662,7 +746,9 @@ function App() {
       (authPage === "create-survey" && !canUsePrivilege("survey:create")) ||
       (authPage === "edit-survey" && !canUsePrivilege("survey:update")) ||
       (authPage === "user-management" && !canUsePrivilege("user:read")) ||
-      (authPage === "access-management" && !canUsePrivilege("role:read"));
+      (authPage === "access-management" && !canUsePrivilege("role:read")) ||
+      ((authPage === "analysis" || authPage === "analysis-detail") &&
+        !canUsePrivilege("analytics:read"));
 
     if (blockedPage) {
       const timerId = window.setTimeout(() => {
@@ -727,6 +813,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
@@ -748,6 +835,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
@@ -771,6 +859,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
@@ -795,6 +884,7 @@ function App() {
         onBackHome={openHome}
         onCompleteSurvey={openSurveyComplete}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
@@ -818,6 +908,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
@@ -841,12 +932,58 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
         onOpenSurveyFill={openSurveyFill}
         onOpenSurveyList={openSurveyList}
         onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
+      />,
+    );
+  }
+
+  if (authPage === "analysis") {
+    return withLogoutDialog(
+      <Analysis
+        accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
+        accountName={accountName}
+        accountPrivileges={accountPrivileges}
+        isAuthenticated={isAuthenticated}
+        onAuthAction={handleAuthAction}
+        onBackHome={openHome}
+        onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysisDetail={openAnalysisDetail}
+        onOpenHistory={openHistory}
+        onOpenManageSurveys={openManageSurveys}
+        onOpenProfile={openProfile}
+        onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
+        onUnauthorized={handleUnauthorized}
+      />,
+    );
+  }
+
+  if (authPage === "analysis-detail") {
+    return withLogoutDialog(
+      <AnalysisDetail
+        accountDescription={accountDescription}
+        accountAvatarSrc={accountAvatarSrc}
+        accountName={accountName}
+        accountPrivileges={accountPrivileges}
+        isAuthenticated={isAuthenticated}
+        onAuthAction={handleAuthAction}
+        onBackHome={openHome}
+        onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
+        onOpenHistory={openHistory}
+        onOpenManageSurveys={openManageSurveys}
+        onOpenProfile={openProfile}
+        onOpenSurveyList={openSurveyList}
+        onOpenUserManagement={openUserManagement}
+        onUnauthorized={handleUnauthorized}
+        surveyId={analysisDetailId}
       />,
     );
   }
@@ -863,6 +1000,7 @@ function App() {
         onBackHome={openHome}
         onOpenChangePassword={openChangePassword}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenSurveyList={openSurveyList}
@@ -886,6 +1024,7 @@ function App() {
         onCreateSurvey={openCreateSurvey}
         onEditSurvey={openEditSurvey}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenSurveyList={openSurveyList}
         onOpenProfile={openProfile}
@@ -907,6 +1046,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onOpenAccessManagement={openAccessManagement}
         onBackHome={openHome}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
@@ -927,6 +1067,7 @@ function App() {
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
@@ -948,6 +1089,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
@@ -971,6 +1113,7 @@ function App() {
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
         onOpenAccessManagement={openAccessManagement}
+        onOpenAnalysis={openAnalysis}
         onOpenHistory={openHistory}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}

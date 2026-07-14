@@ -23,6 +23,7 @@ type AccessManagementProps = {
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onBackHome?: () => void;
+  onOpenAnalysis?: () => void;
   onOpenHistory?: () => void;
   onOpenManageSurveys?: () => void;
   onOpenProfile?: () => void;
@@ -85,6 +86,10 @@ type DeleteTarget = {
 };
 
 const MODULE_META: Record<string, { description: string; label: string }> = {
+  analytics: {
+    description: "Melihat ringkasan performa survey dan response",
+    label: "Analisis",
+  },
   role: {
     description: "Kelola role dan hak akses sistem",
     label: "Pengaturan Hak Akses",
@@ -340,6 +345,7 @@ export const AccessManagement = ({
   isAuthenticated,
   onAuthAction,
   onBackHome,
+  onOpenAnalysis,
   onOpenHistory,
   onOpenManageSurveys,
   onOpenProfile,
@@ -655,6 +661,10 @@ export const AccessManagement = ({
 
     if (label === "User Management") {
       onOpenUserManagement?.();
+    }
+
+    if (label === "Analisis") {
+      onOpenAnalysis?.();
     }
 
     if (label === "History") {
