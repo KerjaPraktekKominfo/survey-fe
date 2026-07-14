@@ -2,10 +2,14 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Sidebar } from "../../components/sidebar";
 import { Topbar } from "../../components/topbar";
 import adminAvatar from "../../assets/home/home-admin-avatar.png";
+import usersIcon from "../../assets/home/home-nav-users.svg";
 import searchIcon from "../../assets/survey/manage-search-icon.svg";
 import limitIcon from "../../assets/survey/manage-limit-icon.svg";
+import audienceIcon from "../../assets/survey/detail/detail-audience.svg";
+import statusIcon from "../../assets/survey/detail/detail-status.svg";
 import { API_BASE_URL } from "../../lib/api";
 import { authHeaders } from "../../lib/auth";
+import { resolveProfilePhotoUrl, type ProfilePhotoSource } from "../../lib/profilePhoto";
 import "../../styles/analysis/Analysis.scss";
 
 const RESPONDENT_PER_PAGE = 5;
@@ -48,7 +52,7 @@ type DetailAnswer = {
   value?: string | null;
 };
 
-type DetailRespondent = {
+type DetailRespondent = ProfilePhotoSource & {
   answers?: DetailAnswer[];
   full_name?: string | null;
   nik?: string | null;
@@ -505,14 +509,18 @@ export const AnalysisDetail = ({
 
           <section className="analysis-detail-stats" aria-busy={isLoading}>
             <article>
-              <span aria-hidden="true">{getInitials("Total Responden")}</span>
+              <span aria-hidden="true">
+                <img src={usersIcon} alt="" />
+              </span>
               <div>
                 <p>Total Responden</p>
                 <strong>{formatNumber(parseNumber(detail?.summary?.total_respondents, 0))}</strong>
               </div>
             </article>
             <article>
-              <span aria-hidden="true">{getInitials(status)}</span>
+              <span aria-hidden="true">
+                <img src={statusIcon} alt="" />
+              </span>
               <div>
                 <p>Status</p>
                 <strong className={`analysis-status analysis-status--${status}`}>
@@ -521,7 +529,9 @@ export const AnalysisDetail = ({
               </div>
             </article>
             <article>
-              <span aria-hidden="true">{getInitials(detail?.summary?.audience)}</span>
+              <span aria-hidden="true">
+                <img src={audienceIcon} alt="" />
+              </span>
               <div>
                 <p>Survey Audiens</p>
                 <strong>{detail?.summary?.audience ?? "-"}</strong>
@@ -570,34 +580,43 @@ export const AnalysisDetail = ({
                       </tr>
                     ))
                   ) : respondents.length > 0 ? (
-                    respondents.map((respondent) => (
-                      <tr key={respondent.response_id}>
-                        <td>
-                          <span className="analysis-avatar">
-                            {getInitials(respondent.full_name)}
-                          </span>
-                          <div>
-                            <strong>{respondent.full_name ?? "Responden"}</strong>
-                            <small>{respondent.nik ?? "-"}</small>
-                          </div>
-                        </td>
-                        <td>{formatDateTime(respondent.submitted_at)}</td>
-                        <td>
-                          <span className="analysis-status analysis-status--submitted">
-                            {STATUS_LABELS[respondent.status ?? "submitted"] ?? "Selesai"}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="analysis-detail-button"
-                            onClick={() => setSelectedRespondent(respondent)}
-                            type="button"
-                          >
-                            View Detail
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    respondents.map((respondent) => {
+                      const photoSrc = resolveProfilePhotoUrl(respondent, "");
+
+                      return (
+                        <tr key={respondent.response_id}>
+                          <td>
+                            <span
+                              className={`analysis-avatar ${
+                                photoSrc ? "analysis-avatar--photo" : ""
+                              }`}
+                            >
+                              {photoSrc && <img src={photoSrc} alt="" />}
+                              <span>{getInitials(respondent.full_name)}</span>
+                            </span>
+                            <div>
+                              <strong>{respondent.full_name ?? "Responden"}</strong>
+                              <small>{respondent.nik ?? "-"}</small>
+                            </div>
+                          </td>
+                          <td>{formatDateTime(respondent.submitted_at)}</td>
+                          <td>
+                            <span className="analysis-status analysis-status--submitted">
+                              {STATUS_LABELS[respondent.status ?? "submitted"] ?? "Selesai"}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="analysis-detail-button"
+                              onClick={() => setSelectedRespondent(respondent)}
+                              type="button"
+                            >
+                              View Detail
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td className="analysis-empty" colSpan={4}>
@@ -657,6 +676,7 @@ export const AnalysisDetail = ({
               <div className="analysis-page-tabs" role="tablist">
                 {(detail?.pages ?? []).map((pageItem) => {
                   const pageNumber = Math.max(1, Number(pageItem.page) || 1);
+                  const sectionName = pageItem.section?.trim() || `Halaman ${pageNumber}`;
 
                   return (
                     <button
@@ -665,9 +685,10 @@ export const AnalysisDetail = ({
                       key={pageNumber}
                       onClick={() => setSelectedPage(pageNumber)}
                       role="tab"
+                      title={sectionName}
                       type="button"
                     >
-                      Halaman {pageNumber}
+                      {sectionName}
                     </button>
                   );
                 })}

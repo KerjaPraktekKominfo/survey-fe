@@ -5,6 +5,7 @@ import adminAvatar from "../../assets/home/home-admin-avatar.png";
 import analyticsIcon from "../../assets/home/home-nav-analytics.svg";
 import dashboardIcon from "../../assets/home/home-nav-dashboard.svg";
 import listIcon from "../../assets/home/home-nav-list.svg";
+import calendarIcon from "../../assets/survey/create/create-calendar.svg";
 import searchIcon from "../../assets/survey/manage-search-icon.svg";
 import limitIcon from "../../assets/survey/manage-limit-icon.svg";
 import eyeIcon from "../../assets/auth/login/login-eye-icon.svg";
@@ -57,6 +58,7 @@ type AnalysisApiSurvey = {
 };
 
 type AnalysisApiData = {
+  available_years?: Array<number | string>;
   items?: AnalysisApiSurvey[];
   meta?: ApiMeta;
   response_volume?: Array<{
@@ -70,6 +72,7 @@ type AnalysisApiData = {
     total_respondents?: number | string | null;
     total_surveys?: number | string | null;
   };
+  selected_year?: number | string | null;
 };
 
 type AnalysisSurvey = {
@@ -147,6 +150,11 @@ const normalizeSurvey = (survey: AnalysisApiSurvey): AnalysisSurvey => ({
 const formatNumber = (value: number) =>
   new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(value);
 
+const normalizeYearOption = (value: number | string | null | undefined) => {
+  const parsedValue = parseNumber(value, 0);
+  return parsedValue > 0 ? parsedValue : null;
+};
+
 const formatDate = (dateValue?: string | null) => {
   if (!dateValue) {
     return "-";
@@ -211,10 +219,12 @@ const buildEndpoint = (
   status: string,
   page: number,
   perPage: number,
+  year: number,
 ) => {
   const params = new URLSearchParams({
     page: String(page),
     per_page: String(perPage),
+    year: String(year),
   });
 
   if (search) {
@@ -265,6 +275,10 @@ export const Analysis = ({
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState("");
   const [isLimitOpen, setIsLimitOpen] = useState(false);
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [availableYears, setAvailableYears] = useState<number[]>([currentYear]);
+  const [isYearOpen, setIsYearOpen] = useState(false);
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
@@ -285,7 +299,7 @@ export const Analysis = ({
 
       try {
         const response = await fetch(
-          buildEndpoint(searchQuery, statusFilter, page, perPage),
+          buildEndpoint(searchQuery, statusFilter, page, perPage, selectedYear),
           {
             credentials: "include",
             headers: authHeaders(),
@@ -322,6 +336,16 @@ export const Analysis = ({
         );
         setSurveys((data.items ?? []).map(normalizeSurvey));
         setMeta(nextMeta);
+        setAvailableYears(() => {
+          const years = (data.available_years ?? [data.selected_year ?? selectedYear])
+            .map(normalizeYearOption)
+            .filter((year): year is number => year !== null);
+          const normalizedYears = Array.from(new Set([...years, selectedYear])).sort(
+            (left, right) => right - left,
+          );
+
+          return normalizedYears.length > 0 ? normalizedYears : [selectedYear];
+        });
 
         if (page !== nextMeta.page) {
           setPage(nextMeta.page);
@@ -345,7 +369,7 @@ export const Analysis = ({
     void fetchAnalysis();
 
     return () => controller.abort();
-  }, [onUnauthorized, page, perPage, searchQuery, statusFilter]);
+  }, [onUnauthorized, page, perPage, searchQuery, selectedYear, statusFilter]);
 
   const summaryCards: SummaryCard[] = [
     {
@@ -415,6 +439,12 @@ export const Analysis = ({
     setIsLimitOpen(false);
   };
 
+  const handleYearChange = (nextYear: number) => {
+    setSelectedYear(nextYear);
+    setPage(1);
+    setIsYearOpen(false);
+  };
+
   return (
     <main className="analysis-page">
       <Topbar
@@ -459,7 +489,33 @@ export const Analysis = ({
               <h1>Overview</h1>
               <p>Analisis Survei: Kinerja &amp; Partisipasi Warga</p>
             </div>
-            <span>Data 1 Tahun Terakhir</span>
+            <div className="analysis-year-filter">
+              <button
+                aria-expanded={isYearOpen}
+                aria-haspopup="listbox"
+                onClick={() => setIsYearOpen((current) => !current)}
+                type="button"
+              >
+                <img src={calendarIcon} alt="" aria-hidden="true" />
+                <span>{selectedYear}</span>
+              </button>
+              {isYearOpen && (
+                <div className="analysis-year-filter__menu" role="listbox">
+                  {availableYears.map((year) => (
+                    <button
+                      aria-selected={year === selectedYear}
+                      className={year === selectedYear ? "is-selected" : ""}
+                      key={year}
+                      onClick={() => handleYearChange(year)}
+                      role="option"
+                      type="button"
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </header>
 
           <section className="analysis-summary" aria-label="Ringkasan analisis">
@@ -484,7 +540,7 @@ export const Analysis = ({
           <section className="analysis-chart-card" aria-label="Volume response">
             <header>
               <h2>Response Volume</h2>
-              <strong>Data 1 Tahun Terakhir</strong>
+              <strong>Tahun {selectedYear}</strong>
             </header>
             <div className="analysis-chart">
               {volume.map((item) => (
