@@ -186,24 +186,6 @@
   }
 }
 
-.analysis-summary-card--dark {
-  background: var(--analysis-maroon-deep);
-  border-color: var(--analysis-maroon-deep);
-
-  > span {
-    background: rgba(255, 255, 255, 0.12);
-
-    img {
-      filter: brightness(0) invert(1);
-    }
-  }
-
-  p,
-  strong {
-    color: #ffffff;
-  }
-}
-
 .analysis-chart-card,
 .analysis-table-card,
 .analysis-respondent-card,
@@ -563,18 +545,20 @@
 .analysis-eye-button {
   align-items: center;
   background: transparent;
-  border: 1px solid var(--analysis-maroon);
-  border-radius: 4px;
+  border: 0;
+  border-radius: 999px;
   cursor: pointer;
   display: inline-flex;
-  height: 34px;
+  height: 32px;
   justify-content: center;
   padding: 0;
-  width: 38px;
+  width: 32px;
 
   img {
-    height: 18px;
-    width: 18px;
+    filter: brightness(0) saturate(100%) invert(9%) sepia(81%) saturate(4202%)
+      hue-rotate(355deg) brightness(95%) contrast(108%);
+    height: 15px;
+    width: 15px;
   }
 
   &:hover,
@@ -727,7 +711,6 @@
     min-height: 84px;
 
     > span {
-      background: #fff3f2;
       flex-basis: 38px;
       height: 38px;
       width: 38px;
@@ -747,6 +730,24 @@
 
     .analysis-status {
       margin-top: 6px;
+    }
+  }
+}
+
+.analysis-detail-stats__item--respondents,
+.analysis-detail-stats__item--audience {
+  > span {
+    background: #e8f0fe;
+  }
+}
+
+.analysis-detail-stats__item--status {
+  > span {
+    background: #dcfce7;
+
+    img {
+      height: 25px;
+      width: 25px;
     }
   }
 }
@@ -1012,6 +1013,40 @@
     color: var(--analysis-muted);
     line-height: 22px;
     margin: 0;
+  }
+}
+
+.analysis-modal__tabs {
+  align-items: center;
+  border-bottom: 1px solid #f0d8d5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 18px;
+  padding-bottom: 16px;
+
+  button {
+    background: #ffffff;
+    border: 1px solid var(--analysis-border);
+    border-radius: 4px;
+    color: var(--analysis-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    max-width: 190px;
+    min-height: 34px;
+    overflow: hidden;
+    padding: 7px 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.is-active,
+    &:hover {
+      background: var(--analysis-maroon);
+      border-color: var(--analysis-maroon);
+      color: #ffffff;
+    }
   }
 }
 

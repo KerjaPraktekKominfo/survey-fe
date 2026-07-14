@@ -6,7 +6,7 @@ import usersIcon from "../../assets/home/home-nav-users.svg";
 import searchIcon from "../../assets/survey/manage-search-icon.svg";
 import limitIcon from "../../assets/survey/manage-limit-icon.svg";
 import audienceIcon from "../../assets/survey/detail/detail-audience.svg";
-import statusIcon from "../../assets/survey/detail/detail-status.svg";
+import statusIcon from "../../assets/survey/detail/detail-status-check.svg";
 import { API_BASE_URL } from "../../lib/api";
 import { authHeaders } from "../../lib/auth";
 import { resolveProfilePhotoUrl, type ProfilePhotoSource } from "../../lib/profilePhoto";
@@ -235,6 +235,7 @@ export const AnalysisDetail = ({
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [selectedPage, setSelectedPage] = useState(1);
+  const [selectedRespondentPage, setSelectedRespondentPage] = useState(1);
   const [selectedRespondent, setSelectedRespondent] =
     useState<DetailRespondent | null>(null);
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
@@ -301,13 +302,16 @@ export const AnalysisDetail = ({
         setMeta(nextMeta);
 
         const availablePages = nextDetail?.pages ?? [];
-        if (
-          availablePages.length > 0 &&
-          !availablePages.some(
-            (item) => Math.max(1, Number(item.page) || 1) === selectedPage,
-          )
-        ) {
-          setSelectedPage(Math.max(1, Number(availablePages[0]?.page) || 1));
+        if (availablePages.length > 0) {
+          setSelectedPage((currentPage) => {
+            const hasCurrentPage = availablePages.some(
+              (item) => Math.max(1, Number(item.page) || 1) === currentPage,
+            );
+
+            return hasCurrentPage
+              ? currentPage
+              : Math.max(1, Number(availablePages[0]?.page) || 1);
+          });
         }
 
         if (page !== nextMeta.page) {
@@ -332,12 +336,23 @@ export const AnalysisDetail = ({
     void fetchDetail();
 
     return () => controller.abort();
-  }, [onUnauthorized, page, searchQuery, selectedPage, surveyId]);
+  }, [onUnauthorized, page, searchQuery, surveyId]);
 
   const activePage =
     (detail?.pages ?? []).find(
       (item) => Math.max(1, Number(item.page) || 1) === selectedPage,
     ) ?? detail?.pages?.[0];
+  const respondentPages = detail?.pages ?? [];
+  const activeRespondentPage =
+    respondentPages.find(
+      (item) => Math.max(1, Number(item.page) || 1) === selectedRespondentPage,
+    ) ?? respondentPages[0];
+  const activeRespondentQuestionIds = new Set(
+    (activeRespondentPage?.questions ?? []).map((question) => String(question.id)),
+  );
+  const activeRespondentAnswers = (selectedRespondent?.answers ?? []).filter(
+    (answer) => activeRespondentQuestionIds.has(String(answer.question_id)),
+  );
   const respondents = detail?.respondents?.items ?? [];
   const surveyTitle = detail?.survey?.title?.trim() || "Detail Analisis";
   const opdPengampu =
@@ -508,7 +523,7 @@ export const AnalysisDetail = ({
           </header>
 
           <section className="analysis-detail-stats" aria-busy={isLoading}>
-            <article>
+            <article className="analysis-detail-stats__item analysis-detail-stats__item--respondents">
               <span aria-hidden="true">
                 <img src={usersIcon} alt="" />
               </span>
@@ -517,7 +532,7 @@ export const AnalysisDetail = ({
                 <strong>{formatNumber(parseNumber(detail?.summary?.total_respondents, 0))}</strong>
               </div>
             </article>
-            <article>
+            <article className="analysis-detail-stats__item analysis-detail-stats__item--status">
               <span aria-hidden="true">
                 <img src={statusIcon} alt="" />
               </span>
@@ -528,7 +543,7 @@ export const AnalysisDetail = ({
                 </strong>
               </div>
             </article>
-            <article>
+            <article className="analysis-detail-stats__item analysis-detail-stats__item--audience">
               <span aria-hidden="true">
                 <img src={audienceIcon} alt="" />
               </span>
@@ -606,11 +621,14 @@ export const AnalysisDetail = ({
                             </span>
                           </td>
                           <td>
-                            <button
-                              className="analysis-detail-button"
-                              onClick={() => setSelectedRespondent(respondent)}
-                              type="button"
-                            >
+                          <button
+                            className="analysis-detail-button"
+                            onClick={() => {
+                              setSelectedRespondent(respondent);
+                              setSelectedRespondentPage(selectedPage);
+                            }}
+                            type="button"
+                          >
                               View Detail
                             </button>
                           </td>
@@ -780,13 +798,44 @@ export const AnalysisDetail = ({
                 Tutup
               </button>
             </header>
+            {respondentPages.length > 1 && (
+              <nav className="analysis-modal__tabs" aria-label="Halaman jawaban responden">
+                {respondentPages.map((pageItem) => {
+                  const pageNumber = Math.max(1, Number(pageItem.page) || 1);
+                  const sectionName = pageItem.section?.trim() || `Halaman ${pageNumber}`;
+
+                  return (
+                    <button
+                      aria-current={
+                        pageNumber === selectedRespondentPage ? "page" : undefined
+                      }
+                      className={
+                        pageNumber === selectedRespondentPage ? "is-active" : ""
+                      }
+                      key={pageNumber}
+                      onClick={() => setSelectedRespondentPage(pageNumber)}
+                      title={sectionName}
+                      type="button"
+                    >
+                      {sectionName}
+                    </button>
+                  );
+                })}
+              </nav>
+            )}
             <div className="analysis-modal__answers">
-              {(selectedRespondent.answers ?? []).map((answer, index) => (
+              {activeRespondentAnswers.map((answer, index) => (
                 <article key={`${answer.question_id}-${index}`}>
                   <h3>{answer.question_text ?? `Pertanyaan ${index + 1}`}</h3>
                   <p>{answer.value ?? "-"}</p>
                 </article>
               ))}
+              {activeRespondentAnswers.length === 0 && (
+                <div className="analysis-empty analysis-empty--block">
+                  <strong>Belum ada jawaban di halaman ini</strong>
+                  <span>Pilih tab halaman lain untuk melihat jawaban responden.</span>
+                </div>
+              )}
             </div>
           </section>
         </div>

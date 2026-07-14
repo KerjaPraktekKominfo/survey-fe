@@ -97,7 +97,6 @@ type PaginationMeta = {
 type SummaryCard = {
   icon: string;
   label: string;
-  tone?: "dark";
   value: string;
 };
 
@@ -390,7 +389,6 @@ export const Analysis = ({
     {
       icon: analyticsIcon,
       label: "Total Respondents",
-      tone: "dark",
       value: formatNumber(summary.totalRespondents),
     },
   ];
@@ -520,12 +518,7 @@ export const Analysis = ({
 
           <section className="analysis-summary" aria-label="Ringkasan analisis">
             {summaryCards.map((card) => (
-              <article
-                className={`analysis-summary-card ${
-                  card.tone === "dark" ? "analysis-summary-card--dark" : ""
-                }`}
-                key={card.label}
-              >
+              <article className="analysis-summary-card" key={card.label}>
                 <span aria-hidden="true">
                   <img src={card.icon} alt="" />
                 </span>
