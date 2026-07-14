@@ -343,6 +343,25 @@ export const AnalysisDetail = ({
     (detail?.pages ?? []).find(
       (item) => Math.max(1, Number(item.page) || 1) === selectedPage,
     ) ?? detail?.pages?.[0];
+  const activeQuestions = activePage?.questions ?? [];
+  const childQuestionsByOptionId = activeQuestions.reduce<
+    Record<string, DetailQuestion[]>
+  >((groupedQuestions, question) => {
+    if (question.parent_option_id === null || question.parent_option_id === undefined) {
+      return groupedQuestions;
+    }
+
+    const optionId = String(question.parent_option_id);
+
+    groupedQuestions[optionId] = groupedQuestions[optionId] ?? [];
+    groupedQuestions[optionId].push(question);
+
+    return groupedQuestions;
+  }, {});
+  const topLevelQuestions = activeQuestions.filter(
+    (question) =>
+      question.parent_option_id === null || question.parent_option_id === undefined,
+  );
   const respondentPages = detail?.pages ?? [];
   const activeRespondentPage =
     respondentPages.find(
@@ -455,6 +474,101 @@ export const AnalysisDetail = ({
       setIsExporting(false);
     }
   };
+
+  const renderQuestionRecap = (
+    question: DetailQuestion,
+    questionLabel: string,
+    isNested = false,
+  ) => (
+    <article
+      className={`analysis-question-card ${
+        isNested ? "analysis-question-card--nested" : ""
+      }`}
+      key={question.id}
+    >
+      <div className="analysis-question-card__head">
+        <span>{questionLabel}</span>
+        <div>
+          <h3>{question.question_text || `Pertanyaan ${questionLabel}`}</h3>
+          <p>
+            Tipe:{" "}
+            {QUESTION_TYPE_LABELS[question.question_type ?? ""] ??
+              question.question_type ??
+              "-"}
+          </p>
+        </div>
+      </div>
+
+      {question.question_type === "free_text" ? (
+        <div className="analysis-text-answers">
+          {(question.text_answers ?? []).slice(0, 3).map((answer, answerIndex) => (
+            <div key={`${question.id}-${answerIndex}`}>
+              <p>{answer.answer_text}</p>
+              <small>
+                {answer.respondent_name ?? "Responden"} -{" "}
+                {formatDateTime(answer.submitted_at)}
+              </small>
+            </div>
+          ))}
+          {(question.text_answers ?? []).length === 0 && (
+            <em>Belum ada jawaban teks.</em>
+          )}
+        </div>
+      ) : (
+        <div className="analysis-option-list">
+          {(question.options ?? []).map((option) => {
+            const childQuestions =
+              option.id === null || option.id === undefined
+                ? []
+                : (childQuestionsByOptionId[String(option.id)] ?? []);
+
+            return (
+              <div
+                className="analysis-option-branch"
+                key={option.id ?? option.option_text}
+              >
+                <div
+                  className="analysis-option-row"
+                  style={
+                    {
+                      "--analysis-option-fill": `${Math.min(
+                        100,
+                        Math.max(0, parseNumber(option.percentage, 0)),
+                      )}%`,
+                    } as CSSProperties
+                  }
+                >
+                  <span>{option.option_text}</span>
+                  <strong>
+                    {formatNumber(parseNumber(option.count, 0))} Responden
+                    {` (${parseNumber(option.percentage, 0)}%)`}
+                  </strong>
+                </div>
+
+                {childQuestions.length > 0 && (
+                  <div className="analysis-branch-list">
+                    <small>
+                      Jika "{option.option_text ?? "opsi ini"}" dipilih, tampilkan
+                    </small>
+                    {childQuestions.map((childQuestion, childIndex) =>
+                      renderQuestionRecap(
+                        childQuestion,
+                        `${questionLabel}.${childIndex + 1}`,
+                        true,
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {(question.options ?? []).length === 0 && (
+            <em>Belum ada opsi untuk pertanyaan ini.</em>
+          )}
+        </div>
+      )}
+    </article>
+  );
 
   return (
     <main className="analysis-page analysis-page--detail">
@@ -695,66 +809,10 @@ export const AnalysisDetail = ({
             </header>
 
             <div className="analysis-question-list">
-              {(activePage?.questions ?? []).map((question, index) => (
-                <article className="analysis-question-card" key={question.id}>
-                  <div className="analysis-question-card__head">
-                    <span>{index + 1}</span>
-                    <div>
-                      <h3>{question.question_text || `Pertanyaan ${index + 1}`}</h3>
-                      <p>
-                        Tipe:{" "}
-                        {QUESTION_TYPE_LABELS[question.question_type ?? ""] ??
-                          question.question_type ??
-                          "-"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {question.question_type === "free_text" ? (
-                    <div className="analysis-text-answers">
-                      {(question.text_answers ?? []).slice(0, 3).map((answer, answerIndex) => (
-                        <div key={`${question.id}-${answerIndex}`}>
-                          <p>{answer.answer_text}</p>
-                          <small>
-                            {answer.respondent_name ?? "Responden"} -{" "}
-                            {formatDateTime(answer.submitted_at)}
-                          </small>
-                        </div>
-                      ))}
-                      {(question.text_answers ?? []).length === 0 && (
-                        <em>Belum ada jawaban teks.</em>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="analysis-option-list">
-                      {(question.options ?? []).map((option) => (
-                        <div
-                          className="analysis-option-row"
-                          key={option.id ?? option.option_text}
-                          style={
-                            {
-                              "--analysis-option-fill": `${Math.min(
-                                100,
-                                Math.max(0, parseNumber(option.percentage, 0)),
-                              )}%`,
-                            } as CSSProperties
-                          }
-                        >
-                          <span>{option.option_text}</span>
-                          <strong>
-                            {formatNumber(parseNumber(option.count, 0))} Responden
-                            {` (${parseNumber(option.percentage, 0)}%)`}
-                          </strong>
-                        </div>
-                      ))}
-                      {(question.options ?? []).length === 0 && (
-                        <em>Belum ada opsi untuk pertanyaan ini.</em>
-                      )}
-                    </div>
-                  )}
-                </article>
-              ))}
-              {!isLoading && (activePage?.questions ?? []).length === 0 && (
+              {topLevelQuestions.map((question, index) =>
+                renderQuestionRecap(question, String(index + 1)),
+              )}
+              {!isLoading && topLevelQuestions.length === 0 && (
                 <div className="analysis-empty analysis-empty--block">
                   <strong>Belum ada pertanyaan pada halaman ini</strong>
                   <span>Pilih halaman lain atau lengkapi isi survey.</span>

@@ -28,9 +28,8 @@
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 8px;
   cursor: pointer;
-  display: inline-flex;
+  display: none;
   flex: 0 0 40px;
-  flex-direction: column;
   height: 40px;
   justify-content: center;
   padding: 0;
@@ -94,5 +93,6 @@
 
   .app-topbar__menu {
     display: inline-flex;
+    flex-direction: column;
   }
 }
