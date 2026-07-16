@@ -14,6 +14,11 @@ import "../../styles/analysis/Analysis.scss";
 
 const RESPONDENT_PER_PAGE = 5;
 const PER_PAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
+const RIGHT_SIDEBAR_MOBILE_QUERY = "(max-width: 860px)";
+
+const isRightSidebarMobile = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia(RIGHT_SIDEBAR_MOBILE_QUERY).matches;
 
 type AnalysisDetailProps = {
   accountDescription?: string;
@@ -242,7 +247,9 @@ export const AnalysisDetail = ({
   const [feedback, setFeedback] = useState("");
   const [isLimitOpen, setIsLimitOpen] = useState(false);
   const [selectedPage, setSelectedPage] = useState(1);
-  const [isPageSidebarOpen, setIsPageSidebarOpen] = useState(true);
+  const [isPageSidebarOpen, setIsPageSidebarOpen] = useState(
+    () => !isRightSidebarMobile(),
+  );
   const [selectedRespondentPage, setSelectedRespondentPage] = useState(1);
   const [selectedRespondent, setSelectedRespondent] =
     useState<DetailRespondent | null>(null);
@@ -256,6 +263,18 @@ export const AnalysisDetail = ({
     const timerId = window.setTimeout(() => setFeedback(""), 4200);
     return () => window.clearTimeout(timerId);
   }, [feedback]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(RIGHT_SIDEBAR_MOBILE_QUERY);
+    const syncSidebarState = (matches: boolean) => setIsPageSidebarOpen(!matches);
+    const handleChange = (event: MediaQueryListEvent) =>
+      syncSidebarState(event.matches);
+
+    syncSidebarState(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   useEffect(() => {
     if (!surveyId) {
@@ -866,22 +885,32 @@ export const AnalysisDetail = ({
             isPageSidebarOpen ? "is-open" : "is-collapsed"
           }`}
         >
-          <div className="analysis-page-sidebar__header">
-            <strong>Section</strong>
+          {isPageSidebarOpen ? (
+            <div className="analysis-page-sidebar__header">
+              <strong>Section</strong>
+              <button
+                aria-expanded={isPageSidebarOpen}
+                aria-label="Tutup navigasi section"
+                className="analysis-page-sidebar__toggle"
+                onClick={() => setIsPageSidebarOpen(false)}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="analysis-page-sidebar__chevron"
+                />
+              </button>
+            </div>
+          ) : (
             <button
               aria-expanded={isPageSidebarOpen}
-              aria-label={
-                isPageSidebarOpen
-                  ? "Tutup navigasi section"
-                  : "Buka navigasi section"
-              }
-              className="analysis-page-sidebar__toggle"
-              onClick={() => setIsPageSidebarOpen((current) => !current)}
+              className="analysis-page-sidebar__collapsed-toggle"
+              onClick={() => setIsPageSidebarOpen(true)}
               type="button"
             >
-              <span aria-hidden="true">{">"}</span>
+              Section
             </button>
-          </div>
+          )}
           {isPageSidebarOpen && (
             <div className="analysis-page-sidebar__list" role="tablist">
               {(detail?.pages ?? []).map((pageItem) => {
@@ -893,7 +922,13 @@ export const AnalysisDetail = ({
                     aria-selected={pageNumber === selectedPage}
                     className={pageNumber === selectedPage ? "is-active" : ""}
                     key={pageNumber}
-                    onClick={() => setSelectedPage(pageNumber)}
+                    onClick={() => {
+                      setSelectedPage(pageNumber);
+
+                      if (isRightSidebarMobile()) {
+                        setIsPageSidebarOpen(false);
+                      }
+                    }}
                     role="tab"
                     title={sectionName}
                     type="button"

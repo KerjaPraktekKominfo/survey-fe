@@ -23,6 +23,11 @@ import "../../styles/survey/CreateSurvey.scss";
 
 const DRAFT_STORAGE_KEY = "survey_create_draft";
 const MAX_QUESTION_DEPTH = 3;
+const RIGHT_SIDEBAR_MOBILE_QUERY = "(max-width: 820px)";
+
+const isRightSidebarMobile = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia(RIGHT_SIDEBAR_MOBILE_QUERY).matches;
 
 type CreateSurveyProps = {
   accountDescription?: string;
@@ -786,7 +791,9 @@ export const CreateSurvey = ({
   );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [isQuestionSidebarOpen, setIsQuestionSidebarOpen] = useState(true);
+  const [isQuestionSidebarOpen, setIsQuestionSidebarOpen] = useState(
+    () => !isRightSidebarMobile(),
+  );
   const [isDetailLoading, setIsDetailLoading] = useState(
     mode === "edit" && editSurveyId !== null,
   );
@@ -814,6 +821,19 @@ export const CreateSurvey = ({
       }),
     );
   }, [activePage, draftStorageKey, questions, sectionTitles, surveyId, surveyInfo]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(RIGHT_SIDEBAR_MOBILE_QUERY);
+    const syncSidebarState = (matches: boolean) =>
+      setIsQuestionSidebarOpen(!matches);
+    const handleChange = (event: MediaQueryListEvent) =>
+      syncSidebarState(event.matches);
+
+    syncSidebarState(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   useEffect(() => {
     if (!isEditingSurvey || editSurveyId === null) {
@@ -1090,6 +1110,10 @@ export const CreateSurvey = ({
 
     if (step === 2) {
       syncStepUrl(surveyBasePath, 2, nextPage);
+    }
+
+    if (isRightSidebarMobile()) {
+      setIsQuestionSidebarOpen(false);
     }
   };
 
@@ -2316,22 +2340,29 @@ export const CreateSurvey = ({
         }`}
         aria-label="Halaman survey"
       >
-        <div className="create-question-tabs__header">
-          <strong>Halaman</strong>
+        {isQuestionSidebarOpen ? (
+          <div className="create-question-tabs__header">
+            <strong>Halaman</strong>
+            <button
+              aria-expanded={isQuestionSidebarOpen}
+              aria-label="Tutup navigasi halaman"
+              className="create-question-tabs__toggle"
+              onClick={() => setIsQuestionSidebarOpen(false)}
+              type="button"
+            >
+              <span aria-hidden="true" className="create-question-tabs__chevron" />
+            </button>
+          </div>
+        ) : (
           <button
             aria-expanded={isQuestionSidebarOpen}
-            aria-label={
-              isQuestionSidebarOpen
-                ? "Tutup navigasi halaman"
-                : "Buka navigasi halaman"
-            }
-            className="create-question-tabs__toggle"
-            onClick={() => setIsQuestionSidebarOpen((current) => !current)}
+            className="create-question-tabs__collapsed-toggle"
+            onClick={() => setIsQuestionSidebarOpen(true)}
             type="button"
           >
-            <span aria-hidden="true">{">"}</span>
+            Halaman
           </button>
-        </div>
+        )}
         {isQuestionSidebarOpen && (
           <div className="create-question-tabs__list" role="tablist">
             {questionPages.map((pageNumber) => {

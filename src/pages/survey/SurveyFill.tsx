@@ -119,6 +119,12 @@ type SubmitAnswer =
   | { option_id: number; question_id: number }
   | { option_ids: number[]; question_id: number };
 
+const RIGHT_SIDEBAR_MOBILE_QUERY = "(max-width: 820px)";
+
+const isRightSidebarMobile = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia(RIGHT_SIDEBAR_MOBILE_QUERY).matches;
+
 type DropdownPlacement = {
   maxHeight: number;
   openUp: boolean;
@@ -470,7 +476,9 @@ export const SurveyFill = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(() => Boolean(surveyId));
-  const [isProgressSidebarOpen, setIsProgressSidebarOpen] = useState(true);
+  const [isProgressSidebarOpen, setIsProgressSidebarOpen] = useState(
+    () => !isRightSidebarMobile(),
+  );
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -486,6 +494,19 @@ export const SurveyFill = ({
   const isReadOnly = responseStatus === "submitted";
 
   const draftKey = getAnswerDraftKey(surveyId);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(RIGHT_SIDEBAR_MOBILE_QUERY);
+    const syncSidebarState = (matches: boolean) =>
+      setIsProgressSidebarOpen(!matches);
+    const handleChange = (event: MediaQueryListEvent) =>
+      syncSidebarState(event.matches);
+
+    syncSidebarState(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   useEffect(() => {
     if (!surveyId) {
@@ -915,6 +936,10 @@ export const SurveyFill = ({
 
   const handleProgressClick = async (targetPageIndex: number) => {
     if (isLoading || targetPageIndex === currentPageIndex) {
+      if (targetPageIndex === currentPageIndex && isRightSidebarMobile()) {
+        setIsProgressSidebarOpen(false);
+      }
+
       return;
     }
 
@@ -926,6 +951,10 @@ export const SurveyFill = ({
 
       if (isDraftSaved) {
         setCurrentPageIndex(targetPageIndex);
+
+        if (isRightSidebarMobile()) {
+          setIsProgressSidebarOpen(false);
+        }
       }
       return;
     }
@@ -1297,22 +1326,32 @@ export const SurveyFill = ({
               isProgressSidebarOpen ? "is-open" : "is-collapsed"
             }`}
           >
-            <div className="survey-fill-progress__header">
-              <strong>Halaman</strong>
+            {isProgressSidebarOpen ? (
+              <div className="survey-fill-progress__header">
+                <strong>Halaman</strong>
+                <button
+                  aria-expanded={isProgressSidebarOpen}
+                  aria-label="Tutup navigasi halaman"
+                  className="survey-fill-progress__toggle"
+                  onClick={() => setIsProgressSidebarOpen(false)}
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="survey-fill-progress__chevron"
+                  />
+                </button>
+              </div>
+            ) : (
               <button
                 aria-expanded={isProgressSidebarOpen}
-                aria-label={
-                  isProgressSidebarOpen
-                    ? "Tutup navigasi halaman"
-                    : "Buka navigasi halaman"
-                }
-                className="survey-fill-progress__toggle"
-                onClick={() => setIsProgressSidebarOpen((current) => !current)}
+                className="survey-fill-progress__collapsed-toggle"
+                onClick={() => setIsProgressSidebarOpen(true)}
                 type="button"
               >
-                <span aria-hidden="true">{">"}</span>
+                Halaman
               </button>
-            </div>
+            )}
             {isProgressSidebarOpen && (
               <div className="survey-fill-progress__list">
                 {pages.map((page, index) => {
