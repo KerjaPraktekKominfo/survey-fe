@@ -15,6 +15,7 @@ import "../../styles/analysis/Analysis.scss";
 const RESPONDENT_PER_PAGE = 5;
 const PER_PAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
 const RIGHT_SIDEBAR_MOBILE_QUERY = "(max-width: 860px)";
+const TEXT_ANSWER_PREVIEW_LIMIT = 10;
 
 const isRightSidebarMobile = () =>
   typeof window !== "undefined" &&
@@ -253,6 +254,9 @@ export const AnalysisDetail = ({
   const [selectedRespondentPage, setSelectedRespondentPage] = useState(1);
   const [selectedRespondent, setSelectedRespondent] =
     useState<DetailRespondent | null>(null);
+  const [expandedTextQuestionIds, setExpandedTextQuestionIds] = useState<
+    Set<string>
+  >(() => new Set());
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
@@ -535,18 +539,52 @@ export const AnalysisDetail = ({
 
       {question.question_type === "free_text" ? (
         <div className="analysis-text-answers">
-          {(question.text_answers ?? []).slice(0, 3).map((answer, answerIndex) => (
-            <div key={`${question.id}-${answerIndex}`}>
-              <p>{answer.answer_text}</p>
-              <small>
-                {answer.respondent_name ?? "Responden"} -{" "}
-                {formatDateTime(answer.submitted_at)}
-              </small>
-            </div>
-          ))}
-          {(question.text_answers ?? []).length === 0 && (
-            <em>Belum ada jawaban teks.</em>
-          )}
+          {(() => {
+            const textAnswers = question.text_answers ?? [];
+            const questionKey = String(question.id);
+            const isExpanded = expandedTextQuestionIds.has(questionKey);
+            const visibleTextAnswers = isExpanded
+              ? textAnswers
+              : textAnswers.slice(0, TEXT_ANSWER_PREVIEW_LIMIT);
+
+            return (
+              <>
+                {visibleTextAnswers.map((answer, answerIndex) => (
+                  <div key={`${question.id}-${answerIndex}`}>
+                    <p>{answer.answer_text}</p>
+                    <small>
+                      {answer.respondent_name ?? "Responden"} -{" "}
+                      {formatDateTime(answer.submitted_at)}
+                    </small>
+                  </div>
+                ))}
+                {textAnswers.length === 0 && <em>Belum ada jawaban teks.</em>}
+                {textAnswers.length > TEXT_ANSWER_PREVIEW_LIMIT && (
+                  <button
+                    className="analysis-text-answers__toggle"
+                    onClick={() =>
+                      setExpandedTextQuestionIds((current) => {
+                        const nextQuestionIds = new Set(current);
+
+                        if (nextQuestionIds.has(questionKey)) {
+                          nextQuestionIds.delete(questionKey);
+                        } else {
+                          nextQuestionIds.add(questionKey);
+                        }
+
+                        return nextQuestionIds;
+                      })
+                    }
+                    type="button"
+                  >
+                    {isExpanded
+                      ? "Lihat lebih sedikit"
+                      : `Lihat semua ${textAnswers.length} jawaban`}
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </div>
       ) : (
         <div className="analysis-option-list">
@@ -835,17 +873,36 @@ export const AnalysisDetail = ({
                 </button>
                 {Array.from(visiblePages)
                   .sort((left, right) => left - right)
-                  .map((pageNumber) => (
-                    <button
-                      aria-current={pageNumber === meta.page ? "page" : undefined}
-                      className={pageNumber === meta.page ? "is-active" : ""}
-                      key={pageNumber}
-                      onClick={() => setPage(pageNumber)}
-                      type="button"
-                    >
-                      {pageNumber}
-                    </button>
-                  ))}
+                  .map((pageNumber, index, pages) => {
+                    const previousPageNumber = pages[index - 1];
+                    const shouldShowEllipsis =
+                      previousPageNumber !== undefined &&
+                      pageNumber - previousPageNumber > 1;
+
+                    return (
+                      <span
+                        className="analysis-pagination-group"
+                        key={pageNumber}
+                      >
+                        {shouldShowEllipsis && (
+                          <span
+                            className="analysis-pagination-ellipsis"
+                            aria-hidden="true"
+                          >
+                            ...
+                          </span>
+                        )}
+                        <button
+                          aria-current={pageNumber === meta.page ? "page" : undefined}
+                          className={pageNumber === meta.page ? "is-active" : ""}
+                          onClick={() => setPage(pageNumber)}
+                          type="button"
+                        >
+                          {pageNumber}
+                        </button>
+                      </span>
+                    );
+                  })}
                 <button
                   disabled={meta.page === meta.totalPages}
                   onClick={() =>

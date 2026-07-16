@@ -791,17 +791,30 @@ export const Analysis = ({
                 >
                   {"<"}
                 </button>
-                {visiblePages.map((pageNumber) => (
-                  <button
-                    aria-current={pageNumber === meta.page ? "page" : undefined}
-                    className={pageNumber === meta.page ? "is-active" : ""}
-                    key={pageNumber}
-                    onClick={() => setPage(pageNumber)}
-                    type="button"
-                  >
-                    {pageNumber}
-                  </button>
-                ))}
+                {visiblePages.map((pageNumber, index) => {
+                  const previousPageNumber = visiblePages[index - 1];
+                  const shouldShowEllipsis =
+                    previousPageNumber !== undefined &&
+                    pageNumber - previousPageNumber > 1;
+
+                  return (
+                    <span className="analysis-pagination-group" key={pageNumber}>
+                      {shouldShowEllipsis && (
+                        <span className="analysis-pagination-ellipsis" aria-hidden="true">
+                          ...
+                        </span>
+                      )}
+                      <button
+                        aria-current={pageNumber === meta.page ? "page" : undefined}
+                        className={pageNumber === meta.page ? "is-active" : ""}
+                        onClick={() => setPage(pageNumber)}
+                        type="button"
+                      >
+                        {pageNumber}
+                      </button>
+                    </span>
+                  );
+                })}
                 <button
                   disabled={meta.page === meta.totalPages}
                   onClick={() =>

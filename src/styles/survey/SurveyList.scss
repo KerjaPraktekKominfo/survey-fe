@@ -651,6 +651,32 @@
   }
 }
 
+@media (max-width: 1120px) {
+  .survey-list-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .survey-list-search-form,
+  .survey-list-filter-controls {
+    width: 100%;
+  }
+
+  .survey-list-filter-controls {
+    align-items: stretch;
+    flex-wrap: wrap;
+
+    label {
+      flex: 1 1 180px;
+      min-width: 160px;
+    }
+
+    select {
+      width: 100%;
+    }
+  }
+}
+
 @media (max-width: 980px) {
   .survey-list-card {
     grid-template-columns: 1fr;

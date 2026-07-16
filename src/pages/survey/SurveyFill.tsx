@@ -493,6 +493,16 @@ export const SurveyFill = ({
   const [surveyTitle, setSurveyTitle] = useState(DEFAULT_TITLE);
   const dropdownButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
+  const sourceLabel =
+    activeSidebarItem === "History" ? "Riwayat Survey" : "Daftar Survey";
+  const handleSourceNavigation = () => {
+    if (activeSidebarItem === "History") {
+      onOpenHistory?.();
+      return;
+    }
+
+    onOpenSurveyList?.();
+  };
   const isReadOnly = responseStatus === "submitted";
 
   const draftKey = getAnswerDraftKey(surveyId);
@@ -1307,8 +1317,8 @@ export const SurveyFill = ({
               Beranda
             </button>
             <img src={breadcrumbChevronIcon} alt="" aria-hidden="true" />
-            <button onClick={onOpenSurveyList} type="button">
-              Daftar Survey
+            <button onClick={handleSourceNavigation} type="button">
+              {sourceLabel}
             </button>
             <img src={breadcrumbChevronIcon} alt="" aria-hidden="true" />
             <span>Isi Survey</span>
@@ -1432,10 +1442,10 @@ export const SurveyFill = ({
                   {isReadOnly ? (
                     <button
                       className="survey-fill-actions__primary"
-                      onClick={onOpenSurveyList}
+                      onClick={handleSourceNavigation}
                       type="button"
                     >
-                      Kembali ke Daftar Survey
+                      Kembali ke {sourceLabel}
                       <img src={arrowRightIcon} alt="" aria-hidden="true" />
                     </button>
                   ) : currentPageIndex === pages.length - 1 ? (
@@ -1465,8 +1475,8 @@ export const SurveyFill = ({
               <div className="survey-fill-success">
                 <h2>Form survey belum tersedia.</h2>
                 <p>Silakan kembali ke daftar survey dan coba lagi nanti.</p>
-                <button onClick={onOpenSurveyList} type="button">
-                  Kembali ke Daftar Survey
+                <button onClick={handleSourceNavigation} type="button">
+                  Kembali ke {sourceLabel}
                 </button>
               </div>
             )}
