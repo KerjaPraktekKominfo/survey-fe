@@ -69,9 +69,15 @@ type AnalysisApiData = {
   summary?: {
     active_surveys?: number | string | null;
     closed_surveys?: number | string | null;
+    position_respondents?: {
+      asn?: number | string | null;
+      non_asn?: number | string | null;
+      public?: number | string | null;
+    };
     total_respondents?: number | string | null;
     total_surveys?: number | string | null;
   };
+  scope?: string | null;
   selected_year?: number | string | null;
 };
 
@@ -265,6 +271,11 @@ export const Analysis = ({
   const [summary, setSummary] = useState({
     activeSurveys: 0,
     closedSurveys: 0,
+    positionRespondents: {
+      asn: 0,
+      nonAsn: 0,
+      public: 0,
+    },
     totalRespondents: 0,
     totalSurveys: 0,
   });
@@ -278,6 +289,7 @@ export const Analysis = ({
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([currentYear]);
   const [isYearOpen, setIsYearOpen] = useState(false);
+  const [analysisScope, setAnalysisScope] = useState<"all" | "own">("own");
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
@@ -323,9 +335,15 @@ export const Analysis = ({
         setSummary({
           activeSurveys: parseNumber(data.summary?.active_surveys, 0),
           closedSurveys: parseNumber(data.summary?.closed_surveys, 0),
+          positionRespondents: {
+            asn: parseNumber(data.summary?.position_respondents?.asn, 0),
+            nonAsn: parseNumber(data.summary?.position_respondents?.non_asn, 0),
+            public: parseNumber(data.summary?.position_respondents?.public, 0),
+          },
           totalRespondents: parseNumber(data.summary?.total_respondents, 0),
           totalSurveys: parseNumber(data.summary?.total_surveys, 0),
         });
+        setAnalysisScope(data.scope === "all" ? "all" : "own");
         setVolume(
           (data.response_volume ?? []).map((item) => ({
             label: item.label?.trim() || "-",
@@ -390,6 +408,20 @@ export const Analysis = ({
       icon: analyticsIcon,
       label: "Total Respondents",
       value: formatNumber(summary.totalRespondents),
+    },
+  ];
+  const positionSummary = [
+    {
+      label: "Pegawai ASN",
+      value: summary.positionRespondents.asn,
+    },
+    {
+      label: "Pegawai Non-ASN",
+      value: summary.positionRespondents.nonAsn,
+    },
+    {
+      label: "Masyarakat Umum",
+      value: summary.positionRespondents.public,
     },
   ];
   const maxVolume = Math.max(1, ...volume.map((item) => item.total));
@@ -496,6 +528,7 @@ export const Analysis = ({
               >
                 <img src={calendarIcon} alt="" aria-hidden="true" />
                 <span>{selectedYear}</span>
+                <span className="analysis-year-filter__chevron" aria-hidden="true" />
               </button>
               {isYearOpen && (
                 <div className="analysis-year-filter__menu" role="listbox">
@@ -528,6 +561,22 @@ export const Analysis = ({
                 </div>
               </article>
             ))}
+            <article className="analysis-summary-card analysis-summary-card--positions">
+              <span aria-hidden="true">
+                <img src={dashboardIcon} alt="" />
+              </span>
+              <div>
+                <p>Respondents By Position</p>
+                <div className="analysis-position-counts">
+                  {positionSummary.map((item) => (
+                    <strong key={item.label}>
+                      <span>{item.label}</span>
+                      {formatNumber(item.value)}
+                    </strong>
+                  ))}
+                </div>
+              </div>
+            </article>
           </section>
 
           <section className="analysis-chart-card" aria-label="Volume response">
@@ -552,7 +601,9 @@ export const Analysis = ({
 
           <section className="analysis-table-card" aria-busy={isLoading}>
             <header>
-              <h2>Daftar Survey Anda</h2>
+              <h2>
+                {analysisScope === "all" ? "Daftar Survey" : "Daftar Survey Anda"}
+              </h2>
               <div className="analysis-table-tools">
                 <form onSubmit={handleSearchSubmit}>
                   <label>
