@@ -120,6 +120,12 @@ const STATUS_LABELS: Record<string, string> = {
   upcoming: "UPCOMING",
 };
 
+const POSITION_LABELS: Record<string, string> = {
+  asn: "Pegawai ASN",
+  non_asn: "Pegawai Non-ASN",
+  public: "Masyarakat Umum",
+};
+
 const parseNumber = (value: number | string | null | undefined, fallback = 0) => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -191,6 +197,16 @@ const formatPeriod = (opensAt?: string | null, closesAt?: string | null) => {
   return `${start} - ${end}`;
 };
 
+const getAudienceLabels = (positions: string[]) => {
+  if (positions.length === 0 || positions.includes("public")) {
+    return ["Masyarakat Umum"];
+  }
+
+  return Array.from(
+    new Set(positions.map((position) => POSITION_LABELS[position] ?? position)),
+  );
+};
+
 const getVisiblePageNumbers = (meta: PaginationMeta) => {
   const pages = new Set([1, meta.page]);
 
@@ -222,6 +238,7 @@ const getApiMessage = async (
 const buildEndpoint = (
   search: string,
   status: string,
+  audience: string,
   page: number,
   perPage: number,
   year: number,
@@ -238,6 +255,10 @@ const buildEndpoint = (
 
   if (status) {
     params.set("status", status);
+  }
+
+  if (audience) {
+    params.set("audience", audience);
   }
 
   return `${API_BASE_URL}/surveys/analytics?${params.toString()}`;
@@ -264,6 +285,7 @@ export const Analysis = ({
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [audienceFilter, setAudienceFilter] = useState("");
   const [perPage, setPerPage] = useState<(typeof PER_PAGE_OPTIONS)[number]>(5);
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<PaginationMeta>(initialMeta);
@@ -289,7 +311,6 @@ export const Analysis = ({
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([currentYear]);
   const [isYearOpen, setIsYearOpen] = useState(false);
-  const [analysisScope, setAnalysisScope] = useState<"all" | "own">("own");
   const avatarSrc = accountAvatarSrc ?? adminAvatar;
 
   useEffect(() => {
@@ -310,7 +331,14 @@ export const Analysis = ({
 
       try {
         const response = await fetch(
-          buildEndpoint(searchQuery, statusFilter, page, perPage, selectedYear),
+          buildEndpoint(
+            searchQuery,
+            statusFilter,
+            audienceFilter,
+            page,
+            perPage,
+            selectedYear,
+          ),
           {
             credentials: "include",
             headers: authHeaders(),
@@ -343,7 +371,6 @@ export const Analysis = ({
           totalRespondents: parseNumber(data.summary?.total_respondents, 0),
           totalSurveys: parseNumber(data.summary?.total_surveys, 0),
         });
-        setAnalysisScope(data.scope === "all" ? "all" : "own");
         setVolume(
           (data.response_volume ?? []).map((item) => ({
             label: item.label?.trim() || "-",
@@ -386,7 +413,15 @@ export const Analysis = ({
     void fetchAnalysis();
 
     return () => controller.abort();
-  }, [onUnauthorized, page, perPage, searchQuery, selectedYear, statusFilter]);
+  }, [
+    audienceFilter,
+    onUnauthorized,
+    page,
+    perPage,
+    searchQuery,
+    selectedYear,
+    statusFilter,
+  ]);
 
   const summaryCards: SummaryCard[] = [
     {
@@ -602,9 +637,7 @@ export const Analysis = ({
 
           <section className="analysis-table-card" aria-busy={isLoading}>
             <header>
-              <h2>
-                {analysisScope === "all" ? "Daftar Survey" : "Daftar Survey Anda"}
-              </h2>
+              <h2>Daftar Survey</h2>
               <div className="analysis-table-tools">
                 <form onSubmit={handleSearchSubmit}>
                   <label>
@@ -632,6 +665,21 @@ export const Analysis = ({
                     <option value="upcoming">Upcoming</option>
                     <option value="closed">Closed</option>
                     <option value="draft">Draft</option>
+                  </select>
+                </label>
+                <label className="analysis-select">
+                  <span>Audiens</span>
+                  <select
+                    onChange={(event) => {
+                      setAudienceFilter(event.target.value);
+                      setPage(1);
+                    }}
+                    value={audienceFilter}
+                  >
+                    <option value="">Audiens</option>
+                    <option value="public">Masyarakat Umum</option>
+                    <option value="asn">Pegawai ASN</option>
+                    <option value="non_asn">Pegawai Non-ASN</option>
                   </select>
                 </label>
                 <div className="analysis-limit">
@@ -667,6 +715,7 @@ export const Analysis = ({
                 <thead>
                   <tr>
                     <th>Survey Title</th>
+                    <th>Audiens</th>
                     <th>Periode</th>
                     <th>Responses</th>
                     <th>Status Badge</th>
@@ -682,6 +731,7 @@ export const Analysis = ({
                         <td><span /></td>
                         <td><span /></td>
                         <td><span /></td>
+                        <td><span /></td>
                       </tr>
                     ))
                   ) : surveys.length > 0 ? (
@@ -690,6 +740,13 @@ export const Analysis = ({
                         <td>
                           <strong title={survey.title}>{survey.title}</strong>
                           <small title={survey.opdPengampu}>{survey.opdPengampu}</small>
+                        </td>
+                        <td>
+                          <div className="analysis-audience-badges">
+                            {getAudienceLabels(survey.positions).map((label) => (
+                              <span key={label}>{label}</span>
+                            ))}
+                          </div>
                         </td>
                         <td>{formatPeriod(survey.opensAt, survey.closesAt)}</td>
                         <td>{formatNumber(survey.responseCount)}</td>
@@ -712,7 +769,7 @@ export const Analysis = ({
                     ))
                   ) : (
                     <tr>
-                      <td className="analysis-empty" colSpan={5}>
+                      <td className="analysis-empty" colSpan={6}>
                         <strong>Belum ada data analisis</strong>
                         <span>Survey yang dibuat akan muncul di sini.</span>
                       </td>
