@@ -66,7 +66,6 @@ type SurveyInfo = {
   description: string;
   estimatedTime: string;
   instructions: string;
-  opdPengampu: string;
   opensAt: string;
   positions: string[];
   title: string;
@@ -200,23 +199,12 @@ const positionOptions = [
   },
 ];
 
-const opdOptions = [
-  "Dinas Komunikasi Informatika dan Persandian Kota Yogyakarta",
-  "Dinas Pendidikan Pemuda dan Olahraga Kota Yogyakarta",
-  "Dinas Kesehatan Kota Yogyakarta",
-  "Dinas Perhubungan Kota Yogyakarta",
-  "Dinas Pekerjaan Umum Perumahan dan Kawasan Permukiman Kota Yogyakarta",
-  "Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu Kota Yogyakarta",
-  "Badan Perencanaan Pembangunan Daerah Kota Yogyakarta",
-];
-
 const defaultSurveyInfo: SurveyInfo = {
   audienceMode: "all",
   closesAt: "",
   description: "",
   estimatedTime: "",
   instructions: "",
-  opdPengampu: "",
   opensAt: "",
   positions: [],
   title: "",
@@ -624,7 +612,6 @@ const buildSurveyPayload = (surveyInfo: SurveyInfo, status = "draft") => ({
   description: surveyInfo.description.trim(),
   estimated_time: toNumberOrNull(surveyInfo.estimatedTime),
   instructions: surveyInfo.instructions.trim(),
-  opd_pengampu: surveyInfo.opdPengampu.trim() || null,
   opens_at: toApiDateTime(surveyInfo.opensAt),
   position:
     surveyInfo.audienceMode === "all"
@@ -731,7 +718,6 @@ const normalizeSurveyDetail = (detail: SurveyDetail) => {
           ? ""
           : String(detail.estimated_time),
       instructions: detail.instructions ?? "",
-      opdPengampu: detail.opd_pengampu ?? "",
       opensAt: toDateTimeInputValue(detail.opens_at),
       positions: isPublicAudience
         ? []
@@ -2113,30 +2099,6 @@ export const CreateSurvey = ({
         </div>
       </div>
 
-      <div className="create-settings-card create-settings-card--wide">
-        <header>
-          <span>
-            <img src={infoIcon} alt="" aria-hidden="true" />
-            <h2>OPD Pengampu</h2>
-          </span>
-        </header>
-        <label className="create-survey-field">
-          <span>Dinas/OPD Pembuat Survey</span>
-          <select
-            onChange={(event) =>
-              updateSurveyInfo("opdPengampu", event.target.value)
-            }
-            value={surveyInfo.opdPengampu}
-          >
-            <option value="">Pilih OPD pengampu</option>
-            {opdOptions.map((opd) => (
-              <option key={opd} value={opd}>
-                {opd}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
     </section>
   );
 

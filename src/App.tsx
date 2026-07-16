@@ -56,6 +56,7 @@ const SURVEY_COMPLETION_SESSION_PREFIX = "survey_completion_";
 type AccountProfile = ProfilePhotoSource & {
   full_name?: string | null;
   id?: number | string | null;
+  opd_pengampu?: string | null;
   position?: string | null;
   privileges?: string[];
   role_id?: number | string | null;

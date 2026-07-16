@@ -49,6 +49,7 @@ type ProfileProps = {
 
 type AccountProfile = ProfilePhotoSource & {
   full_name?: string | null;
+  opd_pengampu?: string | null;
   privileges?: string[];
   username?: string | null;
 };
@@ -66,6 +67,7 @@ type ProfileData = ProfilePhotoSource & {
   phone_verified?: boolean;
   phone_verified_at?: string | null;
   position: "asn" | "non_asn" | "public" | string;
+  opd_pengampu?: string | null;
   privileges?: string[];
   role: string;
   role_id: number;
@@ -1043,6 +1045,11 @@ export const Profile = ({
         value: displayValue(profile?.address),
       },
       {
+        key: "opd_pengampu",
+        label: "OPD Pengampu",
+        value: displayValue(profile?.opd_pengampu),
+      },
+      {
         editable: "username",
         key: "username",
         label: "Username",
@@ -1548,6 +1555,7 @@ export const Profile = ({
 
   const identityName = displayValue(profile?.full_name);
   const positionLabel = formatPosition(profile?.position ?? "");
+  const opdPengampuLabel = profile?.opd_pengampu?.trim() ?? "";
   const roleLabel = formatRole(profile?.role ?? "user");
   const profileAvatarSrc = useMemo(
     () =>
@@ -1656,6 +1664,11 @@ export const Profile = ({
                     <span className="profile-badge profile-badge--role">
                       {roleLabel}
                     </span>
+                    {opdPengampuLabel && (
+                      <span className="profile-badge profile-badge--opd">
+                        {opdPengampuLabel}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

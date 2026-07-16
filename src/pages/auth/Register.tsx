@@ -34,6 +34,7 @@ type RegisterForm = {
   passwordConfirmation: string;
   phone: string;
   position: string;
+  opdPengampu: string;
   username: string;
 };
 
@@ -112,6 +113,7 @@ type ApiResult = {
     address?: string | null;
     authenticated?: boolean;
     name?: string;
+    opd_pengampu?: string | null;
     position?: string;
   };
   message?: string;
@@ -126,6 +128,7 @@ const initialForm: RegisterForm = {
   passwordConfirmation: "",
   phone: "",
   position: "",
+  opdPengampu: "",
   username: "",
 };
 
@@ -296,6 +299,11 @@ const validateRegisterField = (
         ? null
         : "Posisi pengguna dari data identitas tidak valid.";
 
+    case "opdPengampu":
+      return values.position && values.position !== "public" && !values.opdPengampu.trim()
+        ? "OPD pengampu dari data identitas tidak valid."
+        : null;
+
     case "terms":
       return acceptedTerms ? null : "Syarat dan Ketentuan wajib disetujui.";
 
@@ -335,6 +343,10 @@ const getFieldFromApiMessage = (message: string): RegisterFieldName | null => {
 
   if (normalizedMessage.includes("password")) {
     return "password";
+  }
+
+  if (normalizedMessage.includes("opd")) {
+    return "opdPengampu";
   }
 
   if (normalizedMessage.includes("posisi") || normalizedMessage.includes("position")) {
@@ -713,11 +725,13 @@ export const Register = ({
         address: "",
         fullName: "",
         nik: value,
+        opdPengampu: "",
         position: "",
       };
 
       setForm(nextForm);
       setOrClearFieldError("fullName", null);
+      setOrClearFieldError("opdPengampu", null);
       setOrClearFieldError("position", null);
 
       if (nextNik.length === 0) {
@@ -829,6 +843,7 @@ export const Register = ({
           ...current,
           address: identity.address ?? "",
           fullName: identity.name ?? "",
+          opdPengampu: identity.opd_pengampu ?? "",
           position: identity.position ?? "",
         }));
         clearFieldError("nik");
@@ -845,6 +860,7 @@ export const Register = ({
           ...current,
           address: "",
           fullName: "",
+          opdPengampu: "",
           position: "",
         }));
         setNikVerification({ message: "", status: "error" });
@@ -874,6 +890,7 @@ export const Register = ({
       "password",
       "passwordConfirmation",
       "position",
+      "opdPengampu",
       "terms",
     ];
 
@@ -1328,6 +1345,20 @@ export const Register = ({
                   onChange={handleFieldChange}
                   placeholder="Status pengguna"
                   value={getPositionLabel(form.position)}
+                />
+              )}
+              {nikVerification.status === "success" && (
+                <RegisterField
+                  autoComplete="off"
+                  disabled
+                  error={fieldErrors.opdPengampu}
+                  icon={dataIcon}
+                  id="opd-pengampu"
+                  label="OPD Pengampu"
+                  name="opdPengampu"
+                  onChange={handleFieldChange}
+                  placeholder="Dinas/OPD pengguna"
+                  value={form.opdPengampu || "Tidak ada OPD"}
                 />
               )}
             </RegisterSection>
