@@ -369,6 +369,8 @@ export const AnalysisDetail = ({
     (detail?.pages ?? []).find(
       (item) => Math.max(1, Number(item.page) || 1) === selectedPage,
     ) ?? detail?.pages?.[0];
+  const activeSectionName =
+    activePage?.section?.trim() || `Halaman ${selectedPage}`;
   const activeQuestions = activePage?.questions ?? [];
   const childQuestionsByOptionId = activeQuestions.reduce<
     Record<string, DetailQuestion[]>
@@ -861,7 +863,7 @@ export const AnalysisDetail = ({
             <header>
               <div>
                 <h2>Rekapitulasi Jawaban Per Pertanyaan</h2>
-                <p>Total data yang diolah dari response submitted.</p>
+                <p>{activeSectionName}</p>
               </div>
             </header>
 

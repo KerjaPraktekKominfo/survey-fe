@@ -713,10 +713,10 @@
 
 .create-question-tabs__toggle {
   align-items: center;
-  background: #fffafa;
-  border: 1px solid #f0d8d5;
+  background: var(--create-maroon-deep);
+  border: 1px solid var(--create-maroon-deep);
   border-radius: 4px;
-  color: var(--create-maroon-deep);
+  color: #ffffff;
   cursor: pointer;
   display: inline-flex;
   flex: 0 0 24px;
@@ -728,8 +728,8 @@
 
   &:hover,
   &:focus-visible {
-    background: #fff3f2;
-    border-color: var(--create-maroon-deep);
+    background: var(--create-maroon-dark);
+    border-color: var(--create-maroon-dark);
     outline: none;
   }
 }
@@ -1538,6 +1538,10 @@
     margin-left: 0;
     max-width: 100vw;
     padding-top: 64px;
+    padding-right: 0;
+  }
+
+  .create-survey-shell.has-right-sidebar {
     padding-right: 0;
   }
 

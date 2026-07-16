@@ -149,10 +149,10 @@
 
 .survey-fill-progress__toggle {
   align-items: center;
-  background: #fffafa;
-  border: 1px solid rgba(226, 191, 185, 0.45);
+  background: var(--survey-fill-maroon);
+  border: 1px solid var(--survey-fill-maroon);
   border-radius: 4px;
-  color: var(--survey-fill-maroon);
+  color: #ffffff;
   cursor: pointer;
   display: inline-flex;
   flex: 0 0 24px;
@@ -164,7 +164,7 @@
 
   &:hover,
   &:focus-visible {
-    background: #fff3f2;
+    background: var(--survey-fill-maroon-strong);
     border-color: var(--survey-fill-maroon-strong);
     outline: none;
   }
@@ -870,6 +870,10 @@
 @media (max-width: 820px) {
   .survey-fill-shell {
     margin-left: 0;
+    padding-right: 0;
+  }
+
+  .survey-fill-shell.has-right-sidebar {
     padding-right: 0;
   }
 
