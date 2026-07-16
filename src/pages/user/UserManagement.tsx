@@ -129,7 +129,7 @@ const normalizeRoleName = (role?: string | null) =>
 const ROLE_LABELS: Record<string, string> = {
   admin_opd: "Admin OPD",
   superadmin: "Superadmin",
-  user: "Warga",
+  user: "User",
 };
 
 const POSITION_LABELS: Record<string, string> = {
@@ -332,11 +332,17 @@ export const UserManagement = ({
   onUnauthorized,
 }: UserManagementProps) => {
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [promotableUsers, setPromotableUsers] = useState<ManagedUser[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [promoteUserSearch, setPromoteUserSearch] = useState("");
+  const [promoteUserId, setPromoteUserId] = useState("");
+  const [promoteRoleId, setPromoteRoleId] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -388,6 +394,7 @@ export const UserManagement = ({
     const fetchUsers = async () => {
       if (!isAuthenticated) {
         setUsers([]);
+        setPromotableUsers([]);
         setRoleOptions([]);
         setIsLoading(false);
         return;
@@ -412,13 +419,15 @@ export const UserManagement = ({
           return;
         }
 
-        const nextUsers = mergeUniqueUsers(
-          managementUsers.map(normalizeUser),
-          promotableUsers.map(normalizeUser),
-        );
-        const nextRoles = mergeRoleOptions(roles.map(normalizeRole), nextUsers);
+        const nextUsers = managementUsers.map(normalizeUser);
+        const nextPromotableUsers = promotableUsers.map(normalizeUser);
+        const nextRoles = mergeRoleOptions(roles.map(normalizeRole), [
+          ...nextUsers,
+          ...nextPromotableUsers,
+        ]);
 
         setUsers(nextUsers);
+        setPromotableUsers(nextPromotableUsers);
         setRoleOptions(nextRoles);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
@@ -426,6 +435,7 @@ export const UserManagement = ({
         }
 
         setUsers([]);
+        setPromotableUsers([]);
         setRoleOptions([]);
         setFeedbackMessage(
           error instanceof Error
@@ -452,9 +462,7 @@ export const UserManagement = ({
         normalizedSearch === "" ||
         user.fullName.toLowerCase().includes(normalizedSearch) ||
         user.username.toLowerCase().includes(normalizedSearch) ||
-        user.nik.toLowerCase().includes(normalizedSearch) ||
-        user.email?.toLowerCase().includes(normalizedSearch) ||
-        user.phone?.toLowerCase().includes(normalizedSearch);
+        user.nik.toLowerCase().includes(normalizedSearch);
       const matchesRole = !roleFilter || user.roleName === roleFilter;
       const matchesStatus =
         !statusFilter ||
@@ -463,6 +471,33 @@ export const UserManagement = ({
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [roleFilter, searchQuery, statusFilter, users]);
+
+  const managementRoleOptions = useMemo(
+    () => roleOptions.filter((role) => role.name !== "user"),
+    [roleOptions],
+  );
+  const promotableRoleOptions = managementRoleOptions;
+  const filteredPromotableUsers = useMemo(() => {
+    const normalizedSearch = promoteUserSearch.trim().toLowerCase();
+
+    return promotableUsers.filter((user) => {
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return (
+        user.fullName.toLowerCase().includes(normalizedSearch) ||
+        user.username.toLowerCase().includes(normalizedSearch) ||
+        user.nik.toLowerCase().includes(normalizedSearch)
+      );
+    });
+  }, [promotableUsers, promoteUserSearch]);
+  const selectedPromotableUser = promotableUsers.find(
+    (user) => String(user.id) === promoteUserId,
+  );
+  const selectedPromoteRole = roleOptions.find(
+    (role) => String(role.id) === promoteRoleId,
+  );
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / perPage));
   const currentPage = Math.min(page, totalPages);
@@ -546,6 +581,25 @@ export const UserManagement = ({
     setIsFilterOpen(false);
   };
 
+  const openPromoteDialog = () => {
+    setPromoteUserSearch("");
+    setPromoteUserId("");
+    setPromoteRoleId("");
+    setFeedbackMessage("");
+    setIsPromoteDialogOpen(true);
+  };
+
+  const closePromoteDialog = () => {
+    if (isPromoting) {
+      return;
+    }
+
+    setIsPromoteDialogOpen(false);
+    setPromoteUserSearch("");
+    setPromoteUserId("");
+    setPromoteRoleId("");
+  };
+
   const openEditDialog = (user: ManagedUser) => {
     setEditTarget(user);
     setEditForm({
@@ -572,6 +626,71 @@ export const UserManagement = ({
     editTarget !== null &&
     (String(editTarget.roleId) !== editForm.roleId ||
       editTarget.isActive !== editForm.isActive);
+
+  const handlePromoteUser = async () => {
+    const nextUserId = parseNumber(promoteUserId);
+    const nextRoleId = parseNumber(promoteRoleId);
+
+    if (nextUserId <= 0 || !selectedPromotableUser) {
+      setFeedbackMessage("Pilih user yang akan dipromosikan.");
+      return;
+    }
+
+    if (nextRoleId <= 0 || !selectedPromoteRole) {
+      setFeedbackMessage("Pilih role tujuan promosi.");
+      return;
+    }
+
+    setIsPromoting(true);
+    setFeedbackMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/${selectedPromotableUser.id}/role`,
+        {
+          body: JSON.stringify({ role_id: nextRoleId }),
+          credentials: "include",
+          headers: authHeaders("application/json"),
+          method: "PUT",
+        },
+      );
+
+      if (response.status === 401) {
+        onUnauthorized?.();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          await getApiMessage(response, "User belum bisa dipromosikan."),
+        );
+      }
+
+      const promotedUser = {
+        ...selectedPromotableUser,
+        roleId: nextRoleId,
+        roleName: selectedPromoteRole.name,
+      };
+
+      setUsers((currentUsers) => mergeUniqueUsers(currentUsers, [promotedUser]));
+      setPromotableUsers((currentUsers) =>
+        currentUsers.filter((user) => user.id !== selectedPromotableUser.id),
+      );
+      setFeedbackMessage(
+        `${selectedPromotableUser.fullName} berhasil dipromosikan menjadi ${selectedPromoteRole.label}.`,
+      );
+      setIsPromoteDialogOpen(false);
+      setPromoteUserSearch("");
+      setPromoteUserId("");
+      setPromoteRoleId("");
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof Error ? error.message : "User belum bisa dipromosikan.",
+      );
+    } finally {
+      setIsPromoting(false);
+    }
+  };
 
   const handleSaveUser = async () => {
     if (!editTarget || !hasEditChanges) {
@@ -640,17 +759,24 @@ export const UserManagement = ({
       }
 
       const nextRoleName = selectedRole?.name ?? editTarget.roleName;
+      const updatedUser = {
+        ...editTarget,
+        isActive: editForm.isActive,
+        roleId: nextRoleId,
+        roleName: nextRoleName,
+      };
+
       setUsers((currentUsers) =>
-        currentUsers.map((user) =>
-          user.id === editTarget.id
-            ? {
-                ...user,
-                isActive: editForm.isActive,
-                roleId: nextRoleId,
-                roleName: nextRoleName,
-              }
-            : user,
-        ),
+        nextRoleName === "user"
+          ? currentUsers.filter((user) => user.id !== editTarget.id)
+          : currentUsers.map((user) =>
+              user.id === editTarget.id ? updatedUser : user,
+            ),
+      );
+      setPromotableUsers((currentUsers) =>
+        nextRoleName === "user"
+          ? mergeUniqueUsers(currentUsers, [updatedUser])
+          : currentUsers.filter((user) => user.id !== editTarget.id),
       );
       setFeedbackMessage("Data user berhasil diperbarui.");
       closeEditDialog();
@@ -710,12 +836,20 @@ export const UserManagement = ({
                     autoComplete="off"
                     id="user-search"
                     onChange={(event) => setSearchInput(event.target.value)}
-                    placeholder="Cari nama, email, atau instansi..."
+                    placeholder="Cari nama, username, atau NIK..."
                     type="search"
                     value={searchInput}
                   />
                 </label>
               </form>
+
+              <button
+                className="user-management-promote-button"
+                onClick={openPromoteDialog}
+                type="button"
+              >
+                Tambah Promosi
+              </button>
 
               <div className="user-management-filter">
                 <button
@@ -739,7 +873,7 @@ export const UserManagement = ({
                         value={roleFilter}
                       >
                         <option value="">Semua peran</option>
-                        {roleOptions.map((role) => (
+                        {managementRoleOptions.map((role) => (
                           <option key={role.id} value={role.name}>
                             {role.label}
                           </option>
@@ -909,6 +1043,132 @@ export const UserManagement = ({
           </section>
         </div>
       </section>
+
+      {isPromoteDialogOpen && (
+        <div className="user-management-dialog" role="presentation">
+          <button
+            aria-label="Tutup tambah promosi user"
+            className="user-management-dialog__backdrop"
+            onClick={closePromoteDialog}
+            type="button"
+          />
+          <section
+            aria-labelledby="promote-user-title"
+            aria-modal="true"
+            className="user-management-dialog__panel user-management-promote-dialog"
+            role="dialog"
+          >
+            <header>
+              <div>
+                <h2 id="promote-user-title">Tambah Promosi User</h2>
+                <p>Pilih akun role user lalu tentukan role barunya.</p>
+              </div>
+              <button
+                aria-label="Tutup tambah promosi user"
+                disabled={isPromoting}
+                onClick={closePromoteDialog}
+                type="button"
+              >
+                x
+              </button>
+            </header>
+
+            <label className="user-management-dialog__field">
+              <span>User</span>
+              <div className="user-management-combobox">
+                <input
+                  autoComplete="off"
+                  disabled={isPromoting}
+                  onChange={(event) => {
+                    setPromoteUserSearch(event.target.value);
+                    setPromoteUserId("");
+                  }}
+                  placeholder="Cari nama, username, atau NIK..."
+                  type="search"
+                  value={promoteUserSearch}
+                />
+
+                <div className="user-management-combobox__list" role="listbox">
+                  {filteredPromotableUsers.length > 0 ? (
+                    filteredPromotableUsers.map((user) => {
+                      const isSelected = String(user.id) === promoteUserId;
+
+                      return (
+                        <button
+                          aria-selected={isSelected}
+                          className={isSelected ? "is-selected" : ""}
+                          disabled={isPromoting}
+                          key={user.id}
+                          onClick={() => {
+                            setPromoteUserId(String(user.id));
+                            setPromoteUserSearch(user.fullName);
+                          }}
+                          role="option"
+                          type="button"
+                        >
+                          <UserAvatar user={user} />
+                          <span>
+                            <strong>{user.fullName}</strong>
+                            <small>
+                              {user.username} - {user.nik}
+                            </small>
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <p>Tidak ada user role user yang cocok.</p>
+                  )}
+                </div>
+              </div>
+            </label>
+
+            <label className="user-management-dialog__field">
+              <span>Role tujuan</span>
+              <select
+                disabled={isPromoting || promotableRoleOptions.length === 0}
+                onChange={(event) => setPromoteRoleId(event.target.value)}
+                value={promoteRoleId}
+              >
+                <option value="">Pilih role tujuan</option>
+                {promotableRoleOptions.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {selectedPromotableUser && selectedPromoteRole && (
+              <p className="user-management-dialog__warning">
+                {selectedPromotableUser.fullName} akan dipromosikan menjadi{" "}
+                {selectedPromoteRole.label}.
+              </p>
+            )}
+
+            <div className="user-management-dialog__actions">
+              <button
+                disabled={isPromoting}
+                onClick={closePromoteDialog}
+                type="button"
+              >
+                Batal
+              </button>
+              <button
+                disabled={
+                  isPromoting ||
+                  !selectedPromotableUser ||
+                  !selectedPromoteRole
+                }
+                onClick={() => void handlePromoteUser()}
+                type="button"
+              >
+                {isPromoting ? "Memproses..." : "Promosikan User"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {editTarget && (
         <div className="user-management-dialog" role="presentation">
