@@ -2314,19 +2314,26 @@ export const CreateSurvey = ({
         className={`create-question-tabs ${
           isQuestionSidebarOpen ? "is-open" : "is-collapsed"
         }`}
-        role="tablist"
         aria-label="Halaman survey"
       >
-        <button
-          aria-expanded={isQuestionSidebarOpen}
-          className="create-question-tabs__toggle"
-          onClick={() => setIsQuestionSidebarOpen((current) => !current)}
-          type="button"
-        >
-          {isQuestionSidebarOpen ? "Tutup" : "Halaman"}
-        </button>
+        <div className="create-question-tabs__header">
+          <strong>Halaman</strong>
+          <button
+            aria-expanded={isQuestionSidebarOpen}
+            aria-label={
+              isQuestionSidebarOpen
+                ? "Tutup navigasi halaman"
+                : "Buka navigasi halaman"
+            }
+            className="create-question-tabs__toggle"
+            onClick={() => setIsQuestionSidebarOpen((current) => !current)}
+            type="button"
+          >
+            <span aria-hidden="true">{">"}</span>
+          </button>
+        </div>
         {isQuestionSidebarOpen && (
-          <div className="create-question-tabs__list">
+          <div className="create-question-tabs__list" role="tablist">
             {questionPages.map((pageNumber) => {
               const sectionName =
                 sectionTitles[pageNumber]?.trim() || `Halaman ${pageNumber}`;
@@ -2575,7 +2582,11 @@ export const CreateSurvey = ({
         privileges={accountPrivileges}
       />
 
-      <section className="create-survey-shell">
+      <section
+        className={`create-survey-shell ${
+          step === 2 && isQuestionSidebarOpen ? "has-right-sidebar" : ""
+        }`}
+      >
         <div className="create-survey-content" aria-busy={isDetailLoading}>
           <header className="create-survey-heading">
             <div>

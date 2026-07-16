@@ -1259,7 +1259,11 @@ export const SurveyFill = ({
         privileges={accountPrivileges}
       />
 
-      <section className="survey-fill-shell">
+      <section
+        className={`survey-fill-shell ${
+          isProgressSidebarOpen ? "has-right-sidebar" : ""
+        }`}
+      >
         {feedback && (
           <p className="survey-fill-toast" role="status">
             {feedback}
@@ -1293,14 +1297,22 @@ export const SurveyFill = ({
               isProgressSidebarOpen ? "is-open" : "is-collapsed"
             }`}
           >
-            <button
-              aria-expanded={isProgressSidebarOpen}
-              className="survey-fill-progress__toggle"
-              onClick={() => setIsProgressSidebarOpen((current) => !current)}
-              type="button"
-            >
-              {isProgressSidebarOpen ? "Tutup" : "Halaman"}
-            </button>
+            <div className="survey-fill-progress__header">
+              <strong>Halaman</strong>
+              <button
+                aria-expanded={isProgressSidebarOpen}
+                aria-label={
+                  isProgressSidebarOpen
+                    ? "Tutup navigasi halaman"
+                    : "Buka navigasi halaman"
+                }
+                className="survey-fill-progress__toggle"
+                onClick={() => setIsProgressSidebarOpen((current) => !current)}
+                type="button"
+              >
+                <span aria-hidden="true">{">"}</span>
+              </button>
+            </div>
             {isProgressSidebarOpen && (
               <div className="survey-fill-progress__list">
                 {pages.map((page, index) => {

@@ -25,11 +25,16 @@
 }
 
 .create-survey-shell {
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
   margin-left: 256px;
   max-width: calc(100vw - 256px);
   padding-top: var(--create-topbar-height);
+}
+
+.create-survey-shell.has-right-sidebar {
+  padding-right: 268px;
 }
 
 .create-survey-content {
@@ -671,6 +676,7 @@
   background: #ffffff;
   border: 1px solid var(--create-border);
   border-radius: 8px 0 0 8px;
+  box-sizing: border-box;
   box-shadow: 0 14px 34px rgba(48, 0, 0, 0.12);
   max-height: calc(100vh - 104px);
   overflow: hidden;
@@ -686,21 +692,56 @@
   }
 }
 
-.create-question-tabs__toggle {
+.create-question-tabs__header {
   align-items: center;
   background: var(--create-maroon-deep);
-  border: 0;
   border-radius: 6px;
+  color: #ffffff;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 6px 8px 6px 12px;
+  width: 100%;
+
+  strong {
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 18px;
+  }
+}
+
+.create-question-tabs__toggle {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border: 0;
+  border-radius: 4px;
   color: #ffffff;
   cursor: pointer;
   display: inline-flex;
+  flex: 0 0 24px;
   font: inherit;
-  font-size: 12px;
-  font-weight: 800;
+  height: 24px;
   justify-content: center;
-  min-height: 32px;
-  padding: 7px 12px;
-  width: 100%;
+  padding: 0;
+  width: 24px;
+
+  span {
+    display: inline-block;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.26);
+    outline: none;
+  }
+}
+
+.create-question-tabs.is-collapsed .create-question-tabs__toggle span {
+  transform: rotate(180deg);
 }
 
 .create-question-tabs__list {
@@ -1475,11 +1516,12 @@
     margin-left: 0;
     max-width: 100vw;
     padding-top: 64px;
+    padding-right: 0;
   }
 
   .create-survey-content {
     max-width: 100%;
-    padding: 24px 16px;
+    padding: 24px 16px 96px;
     width: 100%;
   }
 
@@ -1495,6 +1537,30 @@
   .create-survey-heading,
   .create-survey-steps {
     max-width: calc(100vw - 32px);
+  }
+
+  .create-question-tabs {
+    border-radius: 12px 12px 0 0;
+    bottom: 0;
+    left: 12px;
+    max-height: min(58vh, 420px);
+    right: 12px;
+    top: auto;
+    width: auto;
+    z-index: 70;
+
+    &.is-collapsed {
+      width: auto;
+    }
+  }
+
+  .create-question-tabs__list {
+    max-height: min(44vh, 320px);
+  }
+
+  .create-question-tabs.is-collapsed .create-question-tabs__toggle span,
+  .create-question-tabs.is-open .create-question-tabs__toggle span {
+    transform: rotate(-90deg);
   }
 }
 

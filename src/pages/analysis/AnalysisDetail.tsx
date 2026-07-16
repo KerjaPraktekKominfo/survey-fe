@@ -614,7 +614,11 @@ export const AnalysisDetail = ({
         privileges={accountPrivileges}
       />
 
-      <section className="analysis-detail-shell">
+      <section
+        className={`analysis-detail-shell ${
+          isPageSidebarOpen ? "has-right-sidebar" : ""
+        }`}
+      >
         {feedback && (
           <p className="analysis-toast" role="status">
             {feedback}
@@ -862,14 +866,22 @@ export const AnalysisDetail = ({
             isPageSidebarOpen ? "is-open" : "is-collapsed"
           }`}
         >
-          <button
-            aria-expanded={isPageSidebarOpen}
-            className="analysis-page-sidebar__toggle"
-            onClick={() => setIsPageSidebarOpen((current) => !current)}
-            type="button"
-          >
-            {isPageSidebarOpen ? "Tutup" : "Section"}
-          </button>
+          <div className="analysis-page-sidebar__header">
+            <strong>Section</strong>
+            <button
+              aria-expanded={isPageSidebarOpen}
+              aria-label={
+                isPageSidebarOpen
+                  ? "Tutup navigasi section"
+                  : "Buka navigasi section"
+              }
+              className="analysis-page-sidebar__toggle"
+              onClick={() => setIsPageSidebarOpen((current) => !current)}
+              type="button"
+            >
+              <span aria-hidden="true">{">"}</span>
+            </button>
+          </div>
           {isPageSidebarOpen && (
             <div className="analysis-page-sidebar__list" role="tablist">
               {(detail?.pages ?? []).map((pageItem) => {
