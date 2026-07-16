@@ -561,22 +561,23 @@ export const Analysis = ({
                 </div>
               </article>
             ))}
-            <article className="analysis-summary-card analysis-summary-card--positions">
-              <span aria-hidden="true">
-                <img src={dashboardIcon} alt="" />
-              </span>
-              <div>
-                <p>Respondents By Position</p>
-                <div className="analysis-position-counts">
-                  {positionSummary.map((item) => (
-                    <strong key={item.label}>
-                      <span>{item.label}</span>
-                      {formatNumber(item.value)}
-                    </strong>
-                  ))}
+          </section>
+
+          <section
+            className="analysis-summary analysis-summary--positions"
+            aria-label="Ringkasan responden per posisi"
+          >
+            {positionSummary.map((item) => (
+              <article className="analysis-summary-card" key={item.label}>
+                <span aria-hidden="true">
+                  <img src={dashboardIcon} alt="" />
+                </span>
+                <div>
+                  <p>{item.label}</p>
+                  <strong>{formatNumber(item.value)}</strong>
                 </div>
-              </div>
-            </article>
+              </article>
+            ))}
           </section>
 
           <section className="analysis-chart-card" aria-label="Volume response">
