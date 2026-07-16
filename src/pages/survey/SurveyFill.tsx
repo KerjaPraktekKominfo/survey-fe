@@ -16,6 +16,7 @@ type SurveyFillProps = {
   accountAvatarSrc?: string;
   accountName?: string;
   accountPrivileges?: string[];
+  activeSidebarItem?: "Daftar Survey" | "History";
   isAuthenticated: boolean;
   onAuthAction?: () => void;
   onOpenAccessManagement?: () => void;
@@ -119,7 +120,7 @@ type SubmitAnswer =
   | { option_id: number; question_id: number }
   | { option_ids: number[]; question_id: number };
 
-const RIGHT_SIDEBAR_MOBILE_QUERY = "(max-width: 820px)";
+const RIGHT_SIDEBAR_MOBILE_QUERY = "(max-width: 860px)";
 
 const isRightSidebarMobile = () =>
   typeof window !== "undefined" &&
@@ -457,6 +458,7 @@ export const SurveyFill = ({
   accountAvatarSrc,
   accountName,
   accountPrivileges,
+  activeSidebarItem = "Daftar Survey",
   isAuthenticated,
   onAuthAction,
   onOpenAccessManagement,
@@ -1274,7 +1276,7 @@ export const SurveyFill = ({
       <Sidebar
         accountDescription={accountDescription}
         accountName={accountName}
-        activeItem="Daftar Survey"
+        activeItem={activeSidebarItem}
         avatarSrc={avatarSrc}
         id="survey-fill-sidebar"
         isAuthenticated={isAuthenticated}

@@ -108,6 +108,11 @@ const STATUS_LABELS: Record<string, string> = {
   upcoming: "Upcoming",
 };
 
+const RESPONSE_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  submitted: "Terselesaikan",
+};
+
 const ACCESS_DENIED_LABELS: Record<string, string> = {
   asn: "Pegawai ASN",
   non_asn: "Pegawai Non-ASN",
@@ -344,6 +349,19 @@ const getPeriodLabel = (
 
 const getStatusLabel = (status: string) => STATUS_LABELS[status] ?? status;
 
+const getResponseStatusBadge = (survey: SurveyCard) => {
+  const responseStatus = survey.responseStatus ?? "";
+
+  if (responseStatus !== "submitted" && responseStatus !== "draft") {
+    return null;
+  }
+
+  return {
+    key: responseStatus,
+    label: RESPONSE_STATUS_LABELS[responseStatus],
+  };
+};
+
 const getUnavailableSurveyMessage = (survey: SurveyCard) => {
   if (survey.status === "upcoming") {
     const openingDate = formatDateTime(survey.opensAt);
@@ -433,12 +451,25 @@ const matchesPosition = (survey: SurveyCard, position: string) => {
   return survey.positions.includes(position);
 };
 
+const matchesResponseStatus = (survey: SurveyCard, responseStatus: string) => {
+  if (!responseStatus) {
+    return true;
+  }
+
+  if (responseStatus === "not_started") {
+    return survey.responseStatus !== "submitted" && survey.responseStatus !== "draft";
+  }
+
+  return survey.responseStatus === responseStatus;
+};
+
 const buildEndpoint = (
   search: string,
   page: number,
   perPage: number,
   status: string,
   position: string,
+  responseStatus: string,
 ) => {
   const params = new URLSearchParams({
     page: String(page),
@@ -455,6 +486,10 @@ const buildEndpoint = (
 
   if (position) {
     params.set("position", position);
+  }
+
+  if (responseStatus) {
+    params.set("response_status", responseStatus);
   }
 
   return `${API_BASE_URL}/surveys?${params.toString()}`;
@@ -501,6 +536,7 @@ export const SurveyList = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
+  const [responseFilter, setResponseFilter] = useState("");
   const [perPage, setPerPage] = useState<(typeof PER_PAGE_OPTIONS)[number]>(5);
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<PaginationMeta>(initialMeta);
@@ -532,7 +568,14 @@ export const SurveyList = ({
 
       try {
         const response = await fetch(
-          buildEndpoint(searchQuery, page, perPage, statusFilter, positionFilter),
+          buildEndpoint(
+            searchQuery,
+            page,
+            perPage,
+            statusFilter,
+            positionFilter,
+            responseFilter,
+          ),
           {
             credentials: "include",
             headers: authHeaders(),
@@ -598,7 +641,15 @@ export const SurveyList = ({
     void fetchSurveys();
 
     return () => controller.abort();
-  }, [onUnauthorized, page, perPage, positionFilter, searchQuery, statusFilter]);
+  }, [
+    onUnauthorized,
+    page,
+    perPage,
+    positionFilter,
+    responseFilter,
+    searchQuery,
+    statusFilter,
+  ]);
 
   const fallbackFilteredSurveys = useMemo(() => {
     if (!hasLoadError) {
@@ -616,10 +667,11 @@ export const SurveyList = ({
         isPublicSurveyStatus(survey.status) &&
         matchesSearch &&
         matchesStatus &&
+        matchesResponseStatus(survey, responseFilter) &&
         matchesPosition(survey, positionFilter)
       );
     });
-  }, [hasLoadError, positionFilter, searchQuery, statusFilter]);
+  }, [hasLoadError, positionFilter, responseFilter, searchQuery, statusFilter]);
 
   const fallbackTotalPages = Math.max(
     1,
@@ -806,6 +858,23 @@ export const SurveyList = ({
                 </select>
               </label>
 
+              <label>
+                <span>Status Pengisian</span>
+                <select
+                  aria-label="Filter status pengisian"
+                  onChange={(event) => {
+                    setResponseFilter(event.target.value);
+                    setPage(1);
+                  }}
+                  value={responseFilter}
+                >
+                  <option value="">Pengisian</option>
+                  <option value="submitted">Terselesaikan</option>
+                  <option value="draft">Draft</option>
+                  <option value="not_started">Belum Terselesaikan</option>
+                </select>
+              </label>
+
               <div className="survey-list-limit">
                 <button
                   aria-expanded={isLimitOpen}
@@ -848,56 +917,73 @@ export const SurveyList = ({
               <SurveyListSkeleton />
             ) : visibleSurveys.length > 0 ? (
               visibleSurveys.map((survey) => (
-                <article className="survey-list-card" key={survey.id}>
-                  <div className="survey-list-card__media">
-                    <img
-                      alt=""
-                      onError={(event) => {
-                        event.currentTarget.src = surveyIllustration;
-                      }}
-                      src={resolveImageUrl(survey.image)}
-                    />
-                  </div>
+                (() => {
+                  const responseBadge = getResponseStatusBadge(survey);
+                  const canOpenSurvey =
+                    survey.status === "open" || responseBadge !== null;
 
-                  <div className="survey-list-card__body">
-                    <div className="survey-list-card__top">
-                      <div className="survey-list-card__meta">
-                        <div>
-                          {getPositionBadges(survey.positions).map((label) => (
-                            <span key={label}>{label}</span>
-                          ))}
-                        </div>
-                        <small>
-                          {getPeriodLabel(survey.opensAt, survey.closesAt)}
-                        </small>
+                  return (
+                    <article className="survey-list-card" key={survey.id}>
+                      <div className="survey-list-card__media">
+                        <img
+                          alt=""
+                          onError={(event) => {
+                            event.currentTarget.src = surveyIllustration;
+                          }}
+                          src={resolveImageUrl(survey.image)}
+                        />
                       </div>
-                      <span
-                        className={`survey-list-status survey-list-status--${survey.status}`}
-                      >
-                        <img src={lockIcon} alt="" aria-hidden="true" />
-                        {getStatusLabel(survey.status)}
-                      </span>
-                    </div>
 
-                    <h2>{survey.title}</h2>
-                    <p>{survey.description}</p>
+                      <div className="survey-list-card__body">
+                        <div className="survey-list-card__top">
+                          <div className="survey-list-card__meta">
+                            <div>
+                              {getPositionBadges(survey.positions).map((label) => (
+                                <span key={label}>{label}</span>
+                              ))}
+                            </div>
+                            <small>
+                              {getPeriodLabel(survey.opensAt, survey.closesAt)}
+                            </small>
+                          </div>
+                          <div className="survey-list-card__badges">
+                            <span
+                              className={`survey-list-status survey-list-status--${survey.status}`}
+                            >
+                              <img src={lockIcon} alt="" aria-hidden="true" />
+                              {getStatusLabel(survey.status)}
+                            </span>
+                            {responseBadge && (
+                              <span
+                                className={`survey-list-response-status survey-list-response-status--${responseBadge.key}`}
+                              >
+                                {responseBadge.label}
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                    <div className="survey-list-card__footer">
-                      <span>
-                        Estimasi {survey.estimatedTime ?? 8} menit
-                      </span>
-                      <button
-                        aria-disabled={survey.status !== "open"}
-                        className={survey.status !== "open" ? "is-disabled" : ""}
-                        onClick={() => handleOpenSurveyDetail(survey)}
-                        type="button"
-                      >
-                        {getSurveyActionLabel(survey)}
-                        <img src={arrowRightIcon} alt="" aria-hidden="true" />
-                      </button>
-                    </div>
-                  </div>
-                </article>
+                        <h2>{survey.title}</h2>
+                        <p>{survey.description}</p>
+
+                        <div className="survey-list-card__footer">
+                          <span>
+                            Estimasi {survey.estimatedTime ?? 8} menit
+                          </span>
+                          <button
+                            aria-disabled={!canOpenSurvey}
+                            className={!canOpenSurvey ? "is-disabled" : ""}
+                            onClick={() => handleOpenSurveyDetail(survey)}
+                            type="button"
+                          >
+                            {getSurveyActionLabel(survey)}
+                            <img src={arrowRightIcon} alt="" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })()
               ))
             ) : (
               <div className="survey-list-empty">

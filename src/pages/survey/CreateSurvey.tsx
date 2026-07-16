@@ -23,7 +23,7 @@ import "../../styles/survey/CreateSurvey.scss";
 
 const DRAFT_STORAGE_KEY = "survey_create_draft";
 const MAX_QUESTION_DEPTH = 3;
-const RIGHT_SIDEBAR_MOBILE_QUERY = "(max-width: 820px)";
+const RIGHT_SIDEBAR_MOBILE_QUERY = "(max-width: 860px)";
 
 const isRightSidebarMobile = () =>
   typeof window !== "undefined" &&

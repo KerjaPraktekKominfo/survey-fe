@@ -51,6 +51,8 @@ type AuthPage =
   | "survey-list"
   | "user-management";
 
+type SurveyFillActiveItem = "Daftar Survey" | "History";
+
 const SURVEY_COMPLETION_SESSION_PREFIX = "survey_completion_";
 
 type AccountProfile = ProfilePhotoSource & {
@@ -352,6 +354,8 @@ function App() {
   const [surveyFillId, setSurveyFillId] = useState<number | null>(() =>
     getSurveyFillIdFromPath(),
   );
+  const [surveyFillActiveItem, setSurveyFillActiveItem] =
+    useState<SurveyFillActiveItem>("Daftar Survey");
   const [accountProfile, setAccountProfile] = useState<AccountProfile | null>(
     null,
   );
@@ -631,7 +635,10 @@ function App() {
   );
 
   const openSurveyFill = useCallback(
-    (surveyId: number | string) => {
+    (
+      surveyId: number | string,
+      activeItem: SurveyFillActiveItem = "Daftar Survey",
+    ) => {
       if (!isAuthenticated) {
         goToLogin();
         return;
@@ -649,6 +656,7 @@ function App() {
       url.hash = "";
       window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
       setSurveyFillId(parsedSurveyId);
+      setSurveyFillActiveItem(activeItem);
       setSurveyDetailId(null);
       setResetToken(null);
       setAuthPage("survey-fill");
@@ -880,6 +888,7 @@ function App() {
         accountAvatarSrc={accountAvatarSrc}
         accountName={accountName}
         accountPrivileges={accountPrivileges}
+        activeSidebarItem={surveyFillActiveItem}
         isAuthenticated={isAuthenticated}
         onAuthAction={handleAuthAction}
         onBackHome={openHome}
@@ -936,7 +945,7 @@ function App() {
         onOpenAnalysis={openAnalysis}
         onOpenManageSurveys={openManageSurveys}
         onOpenProfile={openProfile}
-        onOpenSurveyFill={openSurveyFill}
+        onOpenSurveyFill={(surveyId) => openSurveyFill(surveyId, "History")}
         onOpenSurveyList={openSurveyList}
         onOpenUserManagement={openUserManagement}
         onUnauthorized={handleUnauthorized}
