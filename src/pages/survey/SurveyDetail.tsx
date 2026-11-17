@@ -299,7 +299,7 @@ export const SurveyDetail = ({
     : "Survey tidak ditemukan.";
   const estimatedTime = survey.estimatedTime
     ? `${survey.estimatedTime} Menit`
-    : "10 - 15 Menit";
+    : "Belum ditentukan";
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
@@ -569,11 +569,6 @@ export const SurveyDetail = ({
 
           <footer className="survey-detail-footer">
             <p>&copy; 2026 Pemerintah Kota Yogyakarta. Hak Cipta Dilindungi.</p>
-            <div>
-              <span>Kebijakan Privasi</span>
-              <span>Syarat & Ketentuan</span>
-              <span>Kontak</span>
-            </div>
           </footer>
         </div>
       </section>

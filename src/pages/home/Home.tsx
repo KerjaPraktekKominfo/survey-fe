@@ -176,7 +176,7 @@ const getStatusLabel = (status?: string | null) =>
   status?.toLowerCase() === "open" ? "Open" : "Open";
 
 const getEstimatedTimeLabel = (estimatedTime?: number | null) =>
-  `${estimatedTime ?? 8} Menit`;
+  estimatedTime ? `${estimatedTime} Menit` : "Belum ditentukan";
 
 const formatShortDate = (dateValue?: string | null) => {
   if (!dateValue) {
@@ -215,8 +215,16 @@ const getPeriodLabel = (opensAt?: string | null, closesAt?: string | null) => {
   const start = formatShortDate(opensAt);
   const end = formatShortDate(closesAt);
 
-  if (!start || !end) {
-    return "15 Jan - 15 Feb 2024";
+  if (!start && !end) {
+    return "Periode belum ditentukan";
+  }
+
+  if (!start) {
+    return `Sampai ${end.day} ${end.month} ${end.year}`;
+  }
+
+  if (!end) {
+    return `Mulai ${start.day} ${start.month} ${start.year}`;
   }
 
   if (start.year === end.year) {
@@ -287,7 +295,7 @@ export const Home = ({
   }, []);
 
   const visibleSurveys = useMemo(
-    () => (surveys.length > 0 ? surveys : fallbackSurveys),
+    () => (surveys.length > 0 ? surveys : surveys),
     [surveys],
   );
 
@@ -460,12 +468,6 @@ export const Home = ({
               </section>
 
               <section>
-                <h3>Tautan Cepat</h3>
-                <ul>
-                  <li>Daftar Survey</li>
-                  <li>Tentang Kami</li>
-                  <li>Bantuan & FAQ</li>
-                </ul>
               </section>
 
               <section>
@@ -473,17 +475,12 @@ export const Home = ({
                 <p>
                   Dinas Komunikasi Informatika & Persandian Kota Yogyakarta
                 </p>
-                <p>Email: dinkominfosandi@jogjakota.go.id</p>
+                <p>Email: <a href="mailto:dinaskominfosandi@jogjakota.go.id">dinkominfosandi@jogjakota.go.id</a></p>
               </section>
             </div>
 
             <div className="home-footer__bottom">
               <p>&copy; 2026 Pemerintah Kota Yogyakarta. Hak Cipta Dilindungi.</p>
-              <div>
-                <span>Kebijakan Privasi</span>
-                <span>Syarat & Ketentuan</span>
-                <span>Peta Situs</span>
-              </div>
             </div>
           </footer>
         </div>

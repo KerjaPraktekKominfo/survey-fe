@@ -1813,11 +1813,6 @@ export const Profile = ({
 
           <footer className="profile-footer">
             <p>&copy; 2026 Pemerintah Kota Yogyakarta. Hak Cipta Dilindungi.</p>
-            <div>
-              <span>Kebijakan Privasi</span>
-              <span>Syarat & Ketentuan</span>
-              <span>Kontak</span>
-            </div>
           </footer>
         </div>
       </section>
