@@ -341,8 +341,20 @@ const getPeriodLabel = (
   opensAt?: string | null,
   closesAt?: string | null,
 ) => {
-  const startDate = formatDate(opensAt) ?? "Tanpa tanggal mulai";
-  const endDate = formatDate(closesAt) ?? "Tanpa tanggal berakhir";
+  const startDate = formatDate(opensAt);
+  const endDate = formatDate(closesAt);
+
+  if (!startDate && !endDate) {
+    return "Periode belum ditentukan";
+  }
+
+  if (!startDate) {
+    return `Periode: sampai ${endDate}`;
+  }
+
+  if (!endDate) {
+    return `Periode: mulai ${startDate}`;
+  }
 
   return `Periode: ${startDate} - ${endDate}`;
 };
@@ -968,7 +980,10 @@ export const SurveyList = ({
 
                         <div className="survey-list-card__footer">
                           <span>
-                            Estimasi {survey.estimatedTime ?? 8} menit
+                            Estimasi{" "}
+                            {survey.estimatedTime
+                              ? `${survey.estimatedTime} menit`
+                              : "Belum ditentukan"}
                           </span>
                           <button
                             aria-disabled={!canOpenSurvey}
@@ -1029,11 +1044,6 @@ export const SurveyList = ({
 
           <footer className="survey-list-footer">
             <p>&copy; 2026 Pemerintah Kota Yogyakarta. Hak Cipta Dilindungi.</p>
-            <div>
-              <span>Kebijakan Privasi</span>
-              <span>Syarat & Ketentuan</span>
-              <span>Kontak</span>
-            </div>
           </footer>
         </div>
       </section>

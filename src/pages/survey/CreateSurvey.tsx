@@ -593,7 +593,9 @@ const requestFormData = async <TData,>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     body: formData,
     credentials: "include",
-    headers: authHeaders("application/json"),
+    // Biarkan browser menetapkan Content-Type beserta boundary untuk multipart/form-data.
+    // authHeaders() tanpa contentType tetap mengirim X-CSRF-Token jika tersedia.
+    headers: authHeaders(),
     method: "POST",
   });
 
@@ -1190,11 +1192,17 @@ export const CreateSurvey = ({
       nextErrors.title = "Judul survey harus diisi.";
     }
 
-    if (
-      surveyInfo.estimatedTime.trim() !== "" &&
-      toNumberOrNull(surveyInfo.estimatedTime) === null
-    ) {
-      nextErrors.estimatedTime = "Estimasi waktu harus lebih dari 0.";
+    if (surveyInfo.estimatedTime.trim() !== "") {
+      const estimatedTime = Number(surveyInfo.estimatedTime);
+
+      if (
+        !Number.isInteger(estimatedTime) ||
+        estimatedTime < 1 ||
+        estimatedTime > 180
+      ) {
+        nextErrors.estimatedTime =
+          "Estimasi waktu harus berupa bilangan bulat antara 1 sampai 180 menit.";
+      }
     }
 
     const hasSelectedAudience =
@@ -2081,10 +2089,12 @@ export const CreateSurvey = ({
             <input
               aria-label="Estimasi waktu dalam menit"
               min="1"
+              max="180"
+              step="1"
               onChange={(event) =>
                 updateSurveyInfo("estimatedTime", event.target.value)
               }
-              placeholder="Menit"
+              placeholder="Menit (maks. 180)"
               type="number"
               value={surveyInfo.estimatedTime}
             />
